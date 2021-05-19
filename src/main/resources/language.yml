@@ -1,0 +1,7 @@
+commands:
+  army:
+    found: "&cYour army's name is: &3{0}"
+    notfound: "&4You don't belong to any army"
+  create:
+    already-in-army: "&4You already belong to an army!!"
+    success: "&3You created an army successfully"

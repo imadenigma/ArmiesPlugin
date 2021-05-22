@@ -11,19 +11,23 @@ import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
+import me.lucko.helper.utils.Log
 import org.apache.commons.lang.StringUtils
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
+import org.bukkit.entity.Player
 import java.util.*
+import kotlin.collections.HashSet
 
 class User(
-    val offlinePlayer: OfflinePlayer,
+    val uuid: UUID,
     var rank: Rank = Rank.SOLDIER,
-    val additionalPerms: MutableSet<Permissions> = mutableSetOf()
+    private val additionalPerms: MutableSet<Permissions> = mutableSetOf()
 ) : GsonSerializable, Sender {
 
     init {
         users.add(this)
+        Log.info("registering a new user: ${this.uuid}")
         if (language == null) language = Services.load(Configuration::class.java).language
     }
 
@@ -32,7 +36,13 @@ class User(
         return Army.armies.any { it.members.contains(this) }
     }
 
+    fun getArmy() : Army {
+        return Army.armies.first { it.members.contains(this) }
+    }
 
+    fun getPlayer() : Player {
+        return Bukkit.getPlayer(this.uuid)
+    }
 
     override fun serialize(): JsonElement {
         val jsonArray = JsonArray()
@@ -40,7 +50,7 @@ class User(
             jsonArray.add(perm.name)
         }
         return JsonBuilder.`object`()
-            .add("uuid", this.offlinePlayer.uniqueId.toString())
+            .add("uuid", this.uuid.toString())
             .add("rank", this.rank.name)
             .add("additionalPerms", jsonArray)
             .build()
@@ -48,38 +58,42 @@ class User(
 
 
     override fun msgC(path: String) {
-        if (!this.offlinePlayer.isOnline) return
-        var strs = StringUtils.split(path," ")
+        val player = Bukkit.getPlayer(this.uuid)
+        val strs = StringUtils.split(path," ")
         var node = language!!
         for (str in strs) node = node.getNode(str)
-        this.offlinePlayer.player.sendMessage(node.getString("null").colorize())
+        player.sendMessage(node.getString("null").colorize())
     }
 
     override fun msgR(msg: String, vararg replacements: Any) {
-        if (!this.offlinePlayer.isOnline) return
+        val player = Bukkit.getPlayer(this.uuid)
         if (!msg.contains("{")) return
         for (i in replacements.indices) {
             msg.replace("{$i}",replacements[i].toString())
         }
-        this.offlinePlayer.player.sendMessage(msg.colorize())
+        player.sendMessage(msg.colorize())
     }
 
 
     override fun msgCR(path: String, vararg replacements: Any) {
-        if (!this.offlinePlayer.isOnline) return
-        var strs = StringUtils.split(path," ")
+        val player = Bukkit.getPlayer(this.uuid)
+        val strs = StringUtils.split(path," ")
         var node = language!!
         for (str in strs) node = node.getNode(str)
-        val msg = node.getString("null")
+        var msg = node.getString("null")
         for (i in replacements.indices) {
-            msg.replace("{$i}",replacements[i].toString())
+            msg = StringUtils.replace(msg,"{$i}",replacements[i].toString())
         }
-        this.offlinePlayer.player.sendMessage(msg.colorize())
+        player.sendMessage(msg.colorize())
+    }
+
+    override fun msg(msg: String) {
+        this.getPlayer().sendMessage(msg.colorize())
     }
 
     companion object {
 
-        val users = mutableSetOf<User>()
+        val users = HashSet<User>()
         var language: ConfigurationNode? = null
 
         fun deserialize(jsonElement: JsonElement): User {
@@ -88,12 +102,11 @@ class User(
             val rank = Rank.valueOf(obj.get("rank").asString)
             val addiPerms =
                 obj.get("additionalPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()
-            return User(Bukkit.getOfflinePlayer(uuid), rank, addiPerms)
+            return User(uuid, rank, addiPerms)
         }
 
         fun getByUUID(uuid: UUID): User {
-            return this.users.stream().filter { it.offlinePlayer.uniqueId == uuid }.findAny()
-                .orElse(User(Bukkit.getOfflinePlayer(uuid)))
+            return this.users.firstOrNull { it.uuid.equals(uuid) } ?: User(uuid)
         }
 
     }

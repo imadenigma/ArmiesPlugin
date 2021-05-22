@@ -1,7 +1,37 @@
 commands:
+  help:
+    - "&a/a or /army or /army name to get your army's name"
+    - "&3/army create <name> to create army"
+    - "&a blah blah blah"
   army:
+    found: "you have an army"
+    notfound: "&4You don't belong to any army"
+  name:
     found: "&cYour army's name is: &3{0}"
     notfound: "&4You don't belong to any army"
   create:
     already-in-army: "&4You already belong to an army!!"
     success: "&3You created an army successfully"
+  sethome:
+    not-in-army: "&4You don't belong to any army"
+    not-emperor: "&4You don't have permission to execute this command"
+    success: "&3the army's home now is your location"
+  home:
+    not-in-army: "&4You don't belong to any army"
+    dont-exists: "&4Your army do not have a home"
+    prisoner: "&4You don't have permission to execute this command"
+    success: "&3You are teleported successfully"
+  leave:
+    not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
+    prisoner: "&4You are a prisoner you can't leave"
+    success: "&aYou left your army!!"
+  enemy:
+    not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
+    not-emperor: "&4You arent the emperor"
+    success: "&aYou enemy the army"
+  treasury:
+    not-in-army: "&3You arent in army"
+    balance: "&3Your army's balance : {0}"
+    add:
+      success: "you deposit {0} in your army's treasury successfully"
+      need-permission: "you need permission to execute this command"

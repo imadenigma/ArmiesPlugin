@@ -1,10 +1,10 @@
 package me.imadenigma.armies
 
 import me.imadenigma.armies.army.ArmyManager
+import me.imadenigma.armies.commands.CommandManager
 import me.imadenigma.armies.user.UserManager
 import me.lucko.helper.plugin.ExtendedJavaPlugin
 import me.lucko.helper.plugin.ap.Plugin
-import org.bukkit.plugin.java.JavaPlugin
 
 @Plugin(
     name = "Armies",
@@ -21,12 +21,13 @@ class Armies : ExtendedJavaPlugin() {
         Configuration()
         userManager.loadUsers()
         armyManager.loadArmies()
+        CommandManager()
 
     }
 
     override fun disable() {
         // Plugin shutdown logic
-        userManager.loadUsers()
-        armyManager.loadArmies()
+        userManager.saveUsers()
+        armyManager.saveArmies()
     }
 }

@@ -39,7 +39,9 @@ class ArmyManager {
             for (army in Army.armies) {
                 jsonArray.add(army)
             }
-            GsonProvider.writeElementPretty(FileWriter(file), jsonArray.build())
+            val writer = FileWriter(file)
+            GsonProvider.writeElementPretty(writer, jsonArray.build())
+            writer.close()
         }
         Log.info("&3Saving took &c$ms &3ms".colorize())
     }

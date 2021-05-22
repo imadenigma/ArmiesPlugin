@@ -17,5 +17,6 @@ enum class Rank(vararg permissions: Permissions) {
     ),
     PRISONER(
         Permissions.COALITION_CHAT
-    )
+    ),
+    NOTHING
 }

@@ -10,4 +10,6 @@ interface Sender {
 
     fun msgCR(path: String, vararg replacements: Any)
 
+    fun msg(msg: String)
+
 }

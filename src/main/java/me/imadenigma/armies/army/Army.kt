@@ -24,10 +24,16 @@ class Army(
 ) : GsonSerializable {
     var enemUUID = setOf<UUID>()
     var alliesUUID = setOf<UUID>()
+
+    init {
+        armies.add(this)
+    }
+
+
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
-            .addAll(this.members.stream().map { JsonBuilder.primitiveNonNull(it.offlinePlayer.uniqueId.toString()) })
-        var pos: JsonObject? = null
+            .addAll(this.members.stream().map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
+        var pos: JsonElement? = null
         if (this.home != null) pos = Position.of(this.home).serialize()
         val enem = JsonBuilder.array().addAll(this.enemies.stream().map { JsonBuilder.primitive(it.uuid.toString()) })
         val alli = JsonBuilder.array().addAll(this.allies.stream().map { JsonBuilder.primitive(it.uuid.toString()) })
@@ -45,7 +51,6 @@ class Army(
             .build()
     }
 
-
     companion object {
 
         val armies = mutableSetOf<Army>()
@@ -57,9 +62,8 @@ class Army(
             val owner = UUID.fromString(obj.get("owner").asString)
             val members = obj.get("members").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val isOpened = obj.get("isOpened").asBoolean
-            val home = obj.get("home")?.let {
-                Position.deserialize(it).toLocation()
-            }
+            var home: Location? = null
+            if (obj.get("home") != null)  home = Position.deserialize(obj.get("home")).toLocation()
             val treasury = obj.get("treasury").asDouble
             val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toSet()
             val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toSet()

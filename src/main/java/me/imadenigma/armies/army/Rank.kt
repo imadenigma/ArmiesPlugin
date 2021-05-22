@@ -1,6 +1,7 @@
 package me.imadenigma.armies.army
 
 enum class Rank(vararg permissions: Permissions) {
+
     EMPEROR(*Permissions.values()),
     KNIGHT(
         Permissions.COALITION_CHAT,
@@ -18,5 +19,9 @@ enum class Rank(vararg permissions: Permissions) {
     PRISONER(
         Permissions.COALITION_CHAT
     ),
-    NOTHING
+    NOTHING;
+
+    companion object {
+        val sorted = listOf(PRISONER, PEASANT, SOLDIER, KNIGHT, EMPEROR)
+    }
 }

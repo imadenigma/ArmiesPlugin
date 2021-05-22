@@ -20,7 +20,9 @@ class Army(
     var home: Location? = null,
     var treasury: Double = 0.0,
     val enemies: MutableSet<Army> = mutableSetOf(),
-    val allies: MutableSet<Army> = mutableSetOf()
+    val allies: MutableSet<Army> = mutableSetOf(),
+    val prisoners: MutableSet<User> = mutableSetOf(),
+    val chatType: Char = 'a'  //either a or c; a = army, c = coalition
 ) : GsonSerializable {
     var enemUUID = setOf<UUID>()
     var alliesUUID = setOf<UUID>()
@@ -48,6 +50,11 @@ class Army(
             .add("treasury", this.treasury)
             .add("enemies", enem.build())
             .add("allies", alli.build())
+            .add("chattype",this.chatType)
+            .add("prisoners",
+                JsonBuilder.array().addAll(this.prisoners.map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
+                    .build()
+            )
             .build()
     }
 
@@ -63,12 +70,13 @@ class Army(
             val members = obj.get("members").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val isOpened = obj.get("isOpened").asBoolean
             var home: Location? = null
-            if (obj.get("home") != null)  home = Position.deserialize(obj.get("home")).toLocation()
+            if (obj.get("home") != null) home = Position.deserialize(obj.get("home")).toLocation()
             val treasury = obj.get("treasury").asDouble
             val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toSet()
             val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toSet()
-
-            val army = Army(uuid, name, owner, members, isOpened, home, treasury)
+            val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
+            val chatType = obj.get("chattype").asCharacter
+            val army = Army(uuid, name, owner, members, isOpened, home, treasury, prisoners = prisoners, chatType = chatType)
             army.enemUUID = enemies
             army.alliesUUID = allies
             return army

@@ -79,6 +79,22 @@ class MainCommands : BaseCommand() {
     }
 
 
+    @Subcommand("promote")
+    @Description("promote a member to another rank")
+    @CommandCompletion("@local_user")
+    fun promote(user: User, target: User) {
+        if (user.rank != Rank.EMPEROR && user.rank != Rank.KNIGHT) {
+            user.msgC("need-permission")
+            return
+        }
+        if (!checkExistence(user,"promote")) return
+        var index = Rank.sorted.indexOf(target.rank) + 1
+        if (index == Rank.sorted.size) index = Rank.sorted.size - 1
+        target.rank = Rank.sorted[index]
+        success(user, "promote",target.getPlayer().displayName,target.rank.name)
+        user.msgCR("commands promote user-msg",user.getPlayer().displayName,target.rank)
+    }
+
     companion object {
 
         fun checkExistence(user: User, command: String): Boolean {
@@ -97,8 +113,8 @@ class MainCommands : BaseCommand() {
             return false
         }
 
-        fun success(user: User, command: String) {
-            user.msgC("commands $command success")
+        fun success(user: User, command: String, vararg rep: Any) {
+            user.msgCR("commands $command success",rep)
         }
 
 

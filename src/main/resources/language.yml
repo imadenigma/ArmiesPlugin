@@ -26,9 +26,14 @@ commands:
     prisoner: "&4You are a prisoner you can't leave"
     success: "&aYou left your army!!"
   enemy:
-    not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
+    not-in-army: "&4WTF you wanna enemy an army without being in one?!!!!"
     not-emperor: "&4You arent the emperor"
     success: "&aYou enemy the army"
+  promote:
+    not-in-army: "&4WTF you wanna promote a member without being in an army!!!!"
+    need-permission: "&cYou don't have permission to promote players"
+    success: "&aYou promoted {0} to the rank {1}"
+    user-msg: "&aYou have been promoted by {0} to {1}"
   treasury:
     not-in-army: "&3You arent in army"
     balance: "&3Your army's balance : {0}"

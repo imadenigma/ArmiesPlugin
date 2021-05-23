@@ -1,3 +1,3 @@
-ranks:
-  emperor:
-    -
+invite:
+  durability: 120 #in seconds
+  msg: "&a{0} has invited you to join his army {1}"

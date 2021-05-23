@@ -1,7 +1,7 @@
 package me.imadenigma.armies.army
 
 import com.google.gson.JsonElement
-import com.google.gson.JsonObject
+import me.imadenigma.armies.ArmyEconomy
 import me.imadenigma.armies.exceptions.ArmyNotFoundException
 import me.imadenigma.armies.toUUID
 import me.imadenigma.armies.user.User
@@ -18,12 +18,12 @@ class Army(
     val members: MutableSet<User> = mutableSetOf(User.getByUUID(owner)),
     var isOpened: Boolean = false,
     var home: Location? = null,
-    var treasury: Double = 0.0,
+    private var treasury: Double = 0.0,
     val enemies: MutableSet<Army> = mutableSetOf(),
     val allies: MutableSet<Army> = mutableSetOf(),
     val prisoners: MutableSet<User> = mutableSetOf(),
     val chatType: Char = 'a'  //either a or c; a = army, c = coalition
-) : GsonSerializable {
+) : GsonSerializable, ArmyEconomy {
     var enemUUID = setOf<UUID>()
     var alliesUUID = setOf<UUID>()
 
@@ -31,6 +31,18 @@ class Army(
         armies.add(this)
     }
 
+    fun addMember(user: User) {
+        if (user.rank != Rank.NOTHING) {
+            user.getArmy().kickMember(user)
+        }
+        user.rank = Rank.SOLDIER
+        this.members.add(user)
+    }
+
+    fun kickMember(user: User) {
+        this.members.remove(user)
+        user.rank = Rank.NOTHING
+    }
 
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
@@ -50,12 +62,29 @@ class Army(
             .add("treasury", this.treasury)
             .add("enemies", enem.build())
             .add("allies", alli.build())
-            .add("chattype",this.chatType)
-            .add("prisoners",
+            .add("chattype", this.chatType)
+            .add(
+                "prisoners",
                 JsonBuilder.array().addAll(this.prisoners.map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
                     .build()
             )
             .build()
+    }
+
+    override fun deposit(amount: Double) {
+        this.treasury += amount
+    }
+
+    override fun withdraw(amount: Double) {
+        if (this.treasury - amount >= 0) {
+            this.treasury -= amount
+            return
+        }
+        this.treasury = 0.0
+    }
+
+    override fun getBalance(): Double {
+        return this.treasury
     }
 
     companion object {
@@ -76,7 +105,8 @@ class Army(
             val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toSet()
             val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val chatType = obj.get("chattype").asCharacter
-            val army = Army(uuid, name, owner, members, isOpened, home, treasury, prisoners = prisoners, chatType = chatType)
+            val army =
+                Army(uuid, name, owner, members, isOpened, home, treasury, prisoners = prisoners, chatType = chatType)
             army.enemUUID = enemies
             army.alliesUUID = allies
             return army

@@ -2,6 +2,8 @@ package me.imadenigma.armies.user
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
+import me.imadenigma.armies.Armies
+import me.imadenigma.armies.ArmyEconomy
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Permissions
@@ -12,6 +14,7 @@ import me.lucko.helper.config.ConfigurationNode
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.utils.Log
+import me.lucko.helper.utils.Players
 import org.apache.commons.lang.StringUtils
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
@@ -23,7 +26,7 @@ class User(
     val uuid: UUID,
     var rank: Rank = Rank.SOLDIER,
     private val additionalPerms: MutableSet<Permissions> = mutableSetOf()
-) : GsonSerializable, Sender {
+) : GsonSerializable, Sender, ArmyEconomy {
 
     init {
         users.add(this)
@@ -109,5 +112,20 @@ class User(
             return this.users.firstOrNull { it.uuid.equals(uuid) } ?: User(uuid)
         }
 
+    }
+
+    override fun deposit(amount: Double) {
+        val econ = Services.load(Armies::class.java).econ!!
+        econ.depositPlayer(Players.getOffline(this.uuid).get(),amount)
+    }
+
+    override fun withdraw(amount: Double) {
+        val econ = Services.load(Armies::class.java).econ!!
+        econ.withdrawPlayer(Players.getOffline(this.uuid).get(),amount)
+    }
+
+    override fun getBalance(): Double {
+        val econ = Services.load(Armies::class.java).econ!!
+        return econ.getBalance(Players.getOffline(this.uuid).get())
     }
 }

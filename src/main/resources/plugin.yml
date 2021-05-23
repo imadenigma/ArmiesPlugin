@@ -1,3 +1,6 @@
 name: Armies
 main: me.imadenigma.armies.Armies
 version: 1.12
+author: Johan Liebert
+depend:
+  - Vault

@@ -25,6 +25,10 @@ commands:
     not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
     prisoner: "&4You are a prisoner you can't leave"
     success: "&aYou left your army!!"
+  join:
+    already-in-army: "&4You are already in army and cannot join two armies in the same time"
+    army-closed: "&4The army you are trying to join is closed"
+    success: "&aYou joined the army successfully"
   enemy:
     not-in-army: "&4WTF you wanna enemy an army without being in one?!!!!"
     not-emperor: "&4You arent the emperor"
@@ -34,9 +38,28 @@ commands:
     need-permission: "&cYou don't have permission to promote players"
     success: "&aYou promoted {0} to the rank {1}"
     user-msg: "&aYou have been promoted by {0} to {1}"
+  open:
+    not-in-army: "&4You should belong to an army"
+      need-permission: "&cYou don't have permission to open the army"
+      success: "&aYou opened your army, anyone can join now"
+  close:
+    not-in-army: "&4You should belong to an army"
+    need-permission: "&cYou don't have permission to close the army"
+    success: "&aYou closed your army, no one can join now"
+
+
+
+
+
+
+
+
   treasury:
     not-in-army: "&3You arent in army"
     balance: "&3Your army's balance : {0}"
     add:
+      success: "you deposit {0} in your army's treasury successfully"
+      need-permission: "you need permission to execute this command"
+    take:
       success: "you deposit {0} in your army's treasury successfully"
       need-permission: "you need permission to execute this command"

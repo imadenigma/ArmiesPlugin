@@ -14,7 +14,7 @@ class TreasuryCommands : BaseCommand() {
     @Default
     fun default(user: User) {
         if (!MainCommands.checkExistence(user,"treasury")) return
-        user.msgCR("commands treasury balance",user.getArmy().treasury)
+        user.msgCR("commands treasury balance",user.getArmy().getBalance())
     }
 
     @Subcommand("give|add|deposit")
@@ -27,14 +27,21 @@ class TreasuryCommands : BaseCommand() {
             return
         }
         MainCommands.success(user, "treasury add")
-        Army.armies.first { it.members.contains(user) }.treasury += amount
+        Army.armies.first { it.members.contains(user) }.deposit(amount.toDouble())
     }
 
     @Subcommand("withdraw|take|remove")
     @CommandCompletion("@amount")
     @Syntax("<amount>")
     fun withdraw(user: User, amount: Int) {
-        println("you took $amount motherfucker")
+        if (!MainCommands.checkExistence(user,"treasury")) return
+        if (user.rank != Rank.EMPEROR && user.rank != Rank.KNIGHT) {
+            user.msgC("commands treasury take need-permission")
+            return
+        }
+        MainCommands.success(user, "treasury take")
+        Army.armies.first { it.members.contains(user) }.withdraw(amount.toDouble())
+        user.deposit(amount.toDouble())
     }
 
 }

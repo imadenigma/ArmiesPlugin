@@ -7,6 +7,7 @@ import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Rank
+import me.imadenigma.armies.user.Invite
 import me.imadenigma.armies.user.User
 import me.lucko.helper.Services
 import org.bukkit.Bukkit
@@ -38,7 +39,7 @@ class MainCommands : BaseCommand() {
             return
         }
         Army.armies.first { it.owner == user.uuid }.home = user.getPlayer().location
-        success(user,"sethome")
+        success(user, "sethome")
     }
 
     @Subcommand("home")
@@ -53,7 +54,7 @@ class MainCommands : BaseCommand() {
         }
         val player = Bukkit.getPlayer(user.uuid)
         player.teleport(army.home)
-        success(user,"home")
+        success(user, "home")
     }
 
     @Default
@@ -73,9 +74,36 @@ class MainCommands : BaseCommand() {
     fun leave(user: User) {
         if (!checkExistence(user, "leave")) return
         if (!checkIfPrisoner(user, "leave")) return
-        success(user,"leave")
+        success(user, "leave")
         user.rank = Rank.NOTHING
         Army.armies.first { it.members.contains(user) }.members.remove(user)
+    }
+
+
+    @Subcommand("join")
+    @CommandCompletion("@army")
+    @Syntax("<army>")
+    @Description("join an army")
+    fun join(user: User, army: Army) {
+        if (user.rank != Rank.NOTHING) {
+            user.msgC("commands join already-in-army")
+            return
+        }
+        if (!army.isOpened) {
+            if (Invite.allInvites.any { it.receiver == user }) {
+                if (Invite.allInvites.first { it.receiver.uuid == user.uuid }.army == army) {
+                    user.msgC("commands join success")
+                    army.addMember(user)
+                    success(user, "join")
+                    return
+                }
+            }
+            user.msgC("commands join army-closed")
+            return
+        }
+        user.msgC("commands join success")
+        army.addMember(user)
+        success(user, "join")
     }
 
 
@@ -87,12 +115,33 @@ class MainCommands : BaseCommand() {
             user.msgC("need-permission")
             return
         }
-        if (!checkExistence(user,"promote")) return
+        if (!checkExistence(user, "promote")) return
         var index = Rank.sorted.indexOf(target.rank) + 1
-        if (index == Rank.sorted.size) index = Rank.sorted.size - 1
+        if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
         target.rank = Rank.sorted[index]
-        success(user, "promote",target.getPlayer().displayName,target.rank.name)
-        user.msgCR("commands promote user-msg",user.getPlayer().displayName,target.rank)
+        success(user, "promote", target.getPlayer().displayName, target.rank.name)
+        user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank)
+    }
+
+
+    @Subcommand("open")
+    @Description("open your army to make players can join")
+    fun open(user: User) {
+        if (!checkExistence(user, "open")) return
+        if (user.rank == Rank.KNIGHT || user.rank == Rank.EMPEROR) {
+            user.getArmy().isOpened = true
+            success(user, "open")
+        }else user.msgC("commands open need-permission")
+    }
+
+    @Subcommand("close")
+    @Description("close your army")
+    fun close(user: User) {
+        if (!checkExistence(user, "close")) return
+        if (user.rank == Rank.KNIGHT || user.rank == Rank.EMPEROR) {
+            user.getArmy().isOpened = false
+            success(user, "close")
+        }else user.msgC("commands close need-permission")
     }
 
     companion object {
@@ -114,7 +163,7 @@ class MainCommands : BaseCommand() {
         }
 
         fun success(user: User, command: String, vararg rep: Any) {
-            user.msgCR("commands $command success",rep)
+            user.msgCR("commands $command success", rep)
         }
 
 

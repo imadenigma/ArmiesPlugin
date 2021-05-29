@@ -1,0 +1,51 @@
+ranks:
+  gui-rows: 3 # 5 is the max and 1 is the min and slots and rows must be compatible!!!
+  gui-title: "&cChoose a rank"
+  EMPEROR:
+    item: DIAMOND
+    slot: 4
+    name: "&aEmperor"
+    glow: true
+  KNIGHT:
+    item: GOLDEN_SWORD
+    slot: 9
+    name: "&aKnight"
+    glow: true
+  TROOPS:
+    item: IRON_SWORD
+    slot: 11
+    name: "&aTroops"
+    glow: false
+  PRISONER:
+    item: LEAD
+    slot: 13
+    name: "&aPrisoner"
+    glow: false
+permissions:
+  gui-rows: 5 # 5 is the max and 1 is the min and slots and rows must be compatible!!!
+  gui-title: "&cChoose a rank"
+
+  COALITION_CHAT:
+    item: WOODEN_AXE
+    name: "&eCoalition chat"
+
+    #complete like this for all these permissions:
+    #  BUILD,
+    #  BREAK,
+    #  INVADE,
+    #  ClAIM,
+    #  BEACON_ACCESS,
+    #  PROMOTE,
+    #  DISBAND,
+    #  SURRENDER,
+    #  PERM,
+    #  ENEMY,
+    #  COALITION,
+    #  INVITE,
+    #  OPEN_OR_CLOSE,
+    #  MENU,
+    #  SET_HOME,
+    #  WITHDRAW_BALANCE,
+    #  HOME,
+    #  LEAVE
+

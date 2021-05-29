@@ -1,27 +1,37 @@
 package me.imadenigma.armies.army
 
-enum class Rank(vararg permissions: Permissions) {
+import java.util.*
 
-    EMPEROR(*Permissions.values()),
+enum class Rank(val permissions: Array<Permissions>) {
+
+    EMPEROR(Permissions.values()),
     KNIGHT(
-        Permissions.COALITION_CHAT,
-        Permissions.INVADE,
-        Permissions.PROMOTE,
-        Permissions.ENEMY,
-        Permissions.COALITION
+        arrayOf(
+            Permissions.COALITION_CHAT,
+            Permissions.INVADE,
+            Permissions.PROMOTE,
+            Permissions.ENEMY,
+            Permissions.COALITION
+        )
     ),
-    SOLDIER(
-        Permissions.COALITION_CHAT
+    TROOPS(
+        arrayOf(
+            Permissions.COALITION_CHAT
+        )
     ),
     PEASANT(
-        Permissions.COALITION_CHAT
+        arrayOf(
+            Permissions.COALITION_CHAT
+        )
     ),
     PRISONER(
-        Permissions.COALITION_CHAT
+        arrayOf(
+            Permissions.COALITION_CHAT
+        )
     ),
-    NOTHING;
+    NOTHING(arrayOf());
 
     companion object {
-        val sorted = listOf(PRISONER, PEASANT, SOLDIER, KNIGHT, EMPEROR)
+        val sorted = LinkedList(values().toMutableSet())
     }
 }

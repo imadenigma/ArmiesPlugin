@@ -17,15 +17,15 @@ import me.lucko.helper.utils.Log
 import me.lucko.helper.utils.Players
 import org.apache.commons.lang.StringUtils
 import org.bukkit.Bukkit
-import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 import java.util.*
 import kotlin.collections.HashSet
 
 class User(
     val uuid: UUID,
-    var rank: Rank = Rank.SOLDIER,
-    private val additionalPerms: MutableSet<Permissions> = mutableSetOf()
+    var rank: Rank = Rank.TROOPS,
+    val additionalPerms: MutableSet<Permissions> = mutableSetOf(),
+    val deletedPerms: MutableSet<Permissions> = mutableSetOf()
 ) : GsonSerializable, Sender, ArmyEconomy {
 
     init {
@@ -34,35 +34,41 @@ class User(
         if (language == null) language = Services.load(Configuration::class.java).language
     }
 
+    private fun getPermissions(): MutableSet<Permissions> {
+        val perms =  this.rank.permissions.toMutableSet()
+        perms.addAll(additionalPerms)
+        perms.removeAll(deletedPerms)
+        return perms
+    }
 
-    fun isOnArmy() : Boolean {
+    fun hasPermission(permission: Permissions): Boolean {
+        return this.getPermissions().contains(permission)
+    }
+
+    fun isOnArmy(): Boolean {
         return Army.armies.any { it.members.contains(this) }
     }
 
-    fun getArmy() : Army {
+    fun getArmy(): Army {
         return Army.armies.first { it.members.contains(this) }
     }
 
-    fun getPlayer() : Player {
+    fun getPlayer(): Player {
         return Bukkit.getPlayer(this.uuid)
     }
 
     override fun serialize(): JsonElement {
-        val jsonArray = JsonArray()
-        for (perm in additionalPerms) {
-            jsonArray.add(perm.name)
-        }
         return JsonBuilder.`object`()
             .add("uuid", this.uuid.toString())
             .add("rank", this.rank.name)
-            .add("additionalPerms", jsonArray)
+            .add("additionalPerms", JsonBuilder.array().addStrings(additionalPerms.map { it.name }).build())
+            .add("deletedPerms",JsonBuilder.array().addStrings(deletedPerms.map { it.name }).build())
             .build()
     }
 
-
     override fun msgC(path: String) {
         val player = Bukkit.getPlayer(this.uuid)
-        val strs = StringUtils.split(path," ")
+        val strs = StringUtils.split(path, " ")
         var node = language!!
         for (str in strs) node = node.getNode(str)
         player.sendMessage(node.getString("null").colorize())
@@ -72,7 +78,7 @@ class User(
         val player = Bukkit.getPlayer(this.uuid)
         if (!msg.contains("{")) return
         for (i in replacements.indices) {
-            msg.replace("{$i}",replacements[i].toString())
+            msg.replace("{$i}", replacements[i].toString())
         }
         player.sendMessage(msg.colorize())
     }
@@ -80,12 +86,12 @@ class User(
 
     override fun msgCR(path: String, vararg replacements: Any) {
         val player = Bukkit.getPlayer(this.uuid)
-        val strs = StringUtils.split(path," ")
+        val strs = StringUtils.split(path, " ")
         var node = language!!
         for (str in strs) node = node.getNode(str)
         var msg = node.getString("null")
         for (i in replacements.indices) {
-            msg = StringUtils.replace(msg,"{$i}",replacements[i].toString())
+            msg = StringUtils.replace(msg, "{$i}", replacements[i].toString())
         }
         player.sendMessage(msg.colorize())
     }
@@ -105,7 +111,8 @@ class User(
             val rank = Rank.valueOf(obj.get("rank").asString)
             val addiPerms =
                 obj.get("additionalPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()
-            return User(uuid, rank, addiPerms)
+            val delPerms = obj.get("deletedPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()
+            return User(uuid, rank, addiPerms, delPerms)
         }
 
         fun getByUUID(uuid: UUID): User {
@@ -116,12 +123,12 @@ class User(
 
     override fun deposit(amount: Double) {
         val econ = Services.load(Armies::class.java).econ!!
-        econ.depositPlayer(Players.getOffline(this.uuid).get(),amount)
+        econ.depositPlayer(Players.getOffline(this.uuid).get(), amount)
     }
 
     override fun withdraw(amount: Double) {
         val econ = Services.load(Armies::class.java).econ!!
-        econ.withdrawPlayer(Players.getOffline(this.uuid).get(),amount)
+        econ.withdrawPlayer(Players.getOffline(this.uuid).get(), amount)
     }
 
     override fun getBalance(): Double {

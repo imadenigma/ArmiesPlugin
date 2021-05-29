@@ -1,3 +1,19 @@
+shop:
+  gui-rows: 3
+  gui-title: "&aGuiTitle"
+  money-not-enough: "You don't have enough money to purchase {0}!"
+  success: "You bought {0} successfully"
+  products:
+    claim-card:
+      price: 1000.5
+      name: "&3Claim Card"
+      slot: 10
+      material: PAPER
+      glow: true
+
+
+
+
+
 invite:
   durability: 120 #in seconds
-  msg: "&a{0} has invited you to join his army {1}"

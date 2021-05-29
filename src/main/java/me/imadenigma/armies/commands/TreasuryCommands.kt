@@ -28,6 +28,7 @@ class TreasuryCommands : BaseCommand() {
         }
         MainCommands.success(user, "treasury add")
         Army.armies.first { it.members.contains(user) }.deposit(amount.toDouble())
+        user.withdraw(amount.toDouble())
     }
 
     @Subcommand("withdraw|take|remove")

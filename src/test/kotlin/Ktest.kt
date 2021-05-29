@@ -1,4 +1,7 @@
 import junit.framework.TestCase
+import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.army.Rank
+import org.bukkit.Material
 
 class Ktest : TestCase() {
 
@@ -9,6 +12,21 @@ class Ktest : TestCase() {
            str = str.replace("{$i}",infos[i].toString())
         }
         println(str)
+    }
+
+    fun test2() {
+        Rank.values().sorted().forEach { println(it) }
+        println("================================")
+        Rank.values().sortedBy { it.ordinal }.forEach { println("$it ordinal: ${it.ordinal}") }
+    }
+
+    fun test3() {
+        kotlin.runCatching {
+            val n: Army? = null
+            print(n!!.allies)
+        }
+        val n = mutableSetOf(1,2,2,2,2,2)
+        println(n)
     }
 
 }

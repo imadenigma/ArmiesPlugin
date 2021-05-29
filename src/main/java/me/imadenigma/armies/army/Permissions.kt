@@ -12,5 +12,13 @@ enum class Permissions {
     SURRENDER,
     PERM,
     ENEMY,
-    COALITION
+    COALITION,
+    INVITE,
+    OPEN_OR_CLOSE,
+    MENU,
+    SET_HOME,
+    WITHDRAW_BALANCE,
+    HOME,
+    LEAVE,
+    SHOP
 }

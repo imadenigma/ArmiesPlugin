@@ -7,8 +7,12 @@ import me.imadenigma.armies.toUUID
 import me.imadenigma.armies.user.User
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
+import me.lucko.helper.serialize.BlockPosition
+import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
+import org.bukkit.Chunk
 import org.bukkit.Location
+import org.bukkit.block.Block
 import java.util.*
 
 class Army(
@@ -17,8 +21,11 @@ class Army(
     val owner: UUID,
     val members: MutableSet<User> = mutableSetOf(User.getByUUID(owner)),
     var isOpened: Boolean = false,
-    var home: Location? = null,
+    var core: Block,
+    var home: Location,
+    val lands: MutableSet<ChunkPosition> = mutableSetOf(),
     private var treasury: Double = 0.0,
+    var hp: Int = 250,
     val enemies: MutableSet<Army> = mutableSetOf(),
     val allies: MutableSet<Army> = mutableSetOf(),
     val prisoners: MutableSet<User> = mutableSetOf(),
@@ -29,13 +36,14 @@ class Army(
 
     init {
         armies.add(this)
+        lands.add(ChunkPosition.of(this.home.chunk))
     }
 
     fun addMember(user: User) {
         if (user.rank != Rank.NOTHING) {
             user.getArmy().kickMember(user)
         }
-        user.rank = Rank.SOLDIER
+        user.rank = Rank.TROOPS
         this.members.add(user)
     }
 
@@ -47,19 +55,22 @@ class Army(
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
             .addAll(this.members.stream().map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
-        var pos: JsonElement? = null
-        if (this.home != null) pos = Position.of(this.home).serialize()
-        val enem = JsonBuilder.array().addAll(this.enemies.stream().map { JsonBuilder.primitive(it.uuid.toString()) })
-        val alli = JsonBuilder.array().addAll(this.allies.stream().map { JsonBuilder.primitive(it.uuid.toString()) })
-
+        val pos = BlockPosition.of(this.core).serialize()
+        val home = Position.of(this.home).serialize()
+        val enem = JsonBuilder.array().addAll(this.enemies.map { JsonBuilder.primitive(it.uuid.toString()) })
+        val alli = JsonBuilder.array().addAll(this.allies.map { JsonBuilder.primitive(it.uuid.toString()) })
+        val areas = JsonBuilder.array().addAll(this.lands.map { it.serialize() })
         return JsonBuilder.`object`()
             .add("uuid", this.uuid.toString())
             .add("name", this.name)
             .add("owner", this.owner.toString())
             .add("members", jsMembers.build())
             .add("isOpened", this.isOpened)
-            .add("home", pos)
+            .add("core", pos)
+            .add("home",home)
+            .add("areas",areas.build())
             .add("treasury", this.treasury)
+            .add("hp",this.hp)
             .add("enemies", enem.build())
             .add("allies", alli.build())
             .add("chattype", this.chatType)
@@ -98,15 +109,30 @@ class Army(
             val owner = UUID.fromString(obj.get("owner").asString)
             val members = obj.get("members").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val isOpened = obj.get("isOpened").asBoolean
-            var home: Location? = null
-            if (obj.get("home") != null) home = Position.deserialize(obj.get("home")).toLocation()
+            val core = BlockPosition.deserialize(obj.get("core")).toBlock()
+            val home = Position.deserialize(obj.get("home")).toLocation()
+            val areas = obj.get("areas").asJsonArray.map { ChunkPosition.deserialize(it) }.toMutableSet()
             val treasury = obj.get("treasury").asDouble
             val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toSet()
             val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toSet()
             val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val chatType = obj.get("chattype").asCharacter
+            val hp = obj.get("hp").asInt
             val army =
-                Army(uuid, name, owner, members, isOpened, home, treasury, prisoners = prisoners, chatType = chatType)
+                Army(
+                    uuid,
+                    name,
+                    owner,
+                    members,
+                    isOpened,
+                    core,
+                    home,
+                    areas,
+                    treasury,
+                    hp,
+                    prisoners = prisoners,
+                    chatType = chatType
+                )
             army.enemUUID = enemies
             army.alliesUUID = allies
             return army

@@ -1,16 +1,23 @@
+@file:Suppress("SENSELESS_COMPARISON")
+
 package me.imadenigma.armies.commands
 
 import co.aikar.commands.BaseCommand
 import co.aikar.commands.annotation.*
+import co.aikar.commands.annotation.Optional
 import com.google.common.base.Preconditions
 import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
+import me.imadenigma.armies.guis.RankGui
+import me.imadenigma.armies.guis.ShopGui
 import me.imadenigma.armies.user.Invite
 import me.imadenigma.armies.user.User
 import me.lucko.helper.Services
 import org.bukkit.Bukkit
+import org.bukkit.Material
 import java.util.*
 
 @CommandAlias("a|army")
@@ -26,7 +33,10 @@ class MainCommands : BaseCommand() {
         }
         success(user, "create")
         user.rank = Rank.EMPEROR
-        Army(UUID.randomUUID(), name, user.uuid)
+        val block = user.getPlayer().world.getBlockAt(user.getPlayer().location)
+        block.type = Material.BEACON
+        block.state.update()
+        Army(UUID.randomUUID(), name, user.uuid, core = block, home = block.location)
     }
 
 
@@ -34,10 +44,7 @@ class MainCommands : BaseCommand() {
     @Description("set home's location of the army")
     fun sethome(user: User) {
         checkExistence(user, "sethome")
-        if (user.rank != Rank.EMPEROR) {
-            user.msgC("commands sethome not-emperor")
-            return
-        }
+        if (!hasPermission(user, Permissions.SET_HOME, "sethome")) return
         Army.armies.first { it.owner == user.uuid }.home = user.getPlayer().location
         success(user, "sethome")
     }
@@ -46,12 +53,8 @@ class MainCommands : BaseCommand() {
     @Description("teleport to your army's home")
     fun home(user: User) {
         if (!checkExistence(user, "home")) return
-        if (checkIfPrisoner(user, "home")) return
+        if (!hasPermission(user, Permissions.HOME, "home")) return
         val army = Army.armies.first { it.members.contains(user) }
-        if (army.home == null) {
-            user.msgC("commands home dont-exists")
-            return
-        }
         val player = Bukkit.getPlayer(user.uuid)
         player.teleport(army.home)
         success(user, "home")
@@ -59,7 +62,6 @@ class MainCommands : BaseCommand() {
 
     @Default
     @Subcommand("help")
-    @CatchUnknown
     @HelpCommand
     fun help(user: User) {
         val config = Services.load(Configuration::class.java).language
@@ -73,10 +75,9 @@ class MainCommands : BaseCommand() {
     @Description("leave your army")
     fun leave(user: User) {
         if (!checkExistence(user, "leave")) return
-        if (!checkIfPrisoner(user, "leave")) return
+        if (!hasPermission(user, Permissions.LEAVE, "leave")) return
         success(user, "leave")
-        user.rank = Rank.NOTHING
-        Army.armies.first { it.members.contains(user) }.members.remove(user)
+        user.getArmy().kickMember(user)
     }
 
 
@@ -110,62 +111,121 @@ class MainCommands : BaseCommand() {
     @Subcommand("promote")
     @Description("promote a member to another rank")
     @CommandCompletion("@local_user")
-    fun promote(user: User, target: User) {
-        if (user.rank != Rank.EMPEROR && user.rank != Rank.KNIGHT) {
-            user.msgC("need-permission")
-            return
-        }
+    fun promote(user: User, @Flags("other") @Optional target: User) {
+        if (!hasPermission(user, Permissions.PROMOTE, "promote")) return
         if (!checkExistence(user, "promote")) return
-        var index = Rank.sorted.indexOf(target.rank) + 1
-        if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
-        target.rank = Rank.sorted[index]
-        success(user, "promote", target.getPlayer().displayName, target.rank.name)
-        user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank)
+        if (target == null) {
+            if (user.rank == Rank.EMPEROR) {
+                user.msgC("commands promote emperor")
+                return
+            }
+            if (user.rank == Rank.KNIGHT) {
+                user.msgC("commands promote knight")
+                return
+            }
+            if (user.hasPermission(Permissions.PROMOTE)) {
+                var index = Rank.sorted.indexOf(target.rank) + 1
+                if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
+                target.rank = Rank.sorted[index]
+                success(user, "promote", target.getPlayer().displayName, target.rank.name)
+                user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank.name)
+            }
+        } else {
+            if (target.rank == Rank.KNIGHT || target.rank == Rank.EMPEROR) {
+                user.msg("failed")
+                return
+            }
+            var index = Rank.sorted.indexOf(target.rank) + 1
+            if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
+            target.rank = Rank.sorted[index]
+            success(user, "promote", target.getPlayer().displayName, target.rank.name)
+            user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank.name)
+        }
     }
-
 
     @Subcommand("open")
     @Description("open your army to make players can join")
     fun open(user: User) {
         if (!checkExistence(user, "open")) return
-        if (user.rank == Rank.KNIGHT || user.rank == Rank.EMPEROR) {
-            user.getArmy().isOpened = true
-            success(user, "open")
-        }else user.msgC("commands open need-permission")
+        if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "open")) return
+        user.getArmy().isOpened = true
+        success(user, "open")
     }
 
     @Subcommand("close")
     @Description("close your army")
     fun close(user: User) {
         if (!checkExistence(user, "close")) return
-        if (user.rank == Rank.KNIGHT || user.rank == Rank.EMPEROR) {
-            user.getArmy().isOpened = false
-            success(user, "close")
-        }else user.msgC("commands close need-permission")
+        if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "close")) return
+        user.getArmy().isOpened = false
+        success(user, "close")
+    }
+
+    @Subcommand("invite")
+    @CommandCompletion("@user")
+    @Syntax("<user>")
+    @Description("invite your mate to join your army")
+    fun invite(user: User, @Flags("other") @Optional target: User) {
+        if (target == null) return
+        if (!checkExistence(user, "invite")) return
+        if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "invite")) return
+        if (target.isOnArmy()) {
+            if (target.getArmy() == user.getArmy()) {
+                user.msgC("commands invite same-army")
+                return
+            }
+        }
+        Invite(user, target, user.getArmy())
+        user.msgCR("commands invite sender-msg", user.getPlayer().displayName, user.getArmy().name)
+        target.msgCR("commands invite receiver-msg", user.getPlayer().displayName, user.getArmy().name)
+
+    }
+
+    @Subcommand("name")
+    @Description("returns the name of your army")
+    fun name(user: User) {
+        if (!checkExistence(user, "name")) return
+        user.msgCR("commands name found", user.getArmy().name)
+    }
+
+    @Subcommand("perms")
+    @Description("add or take a permission from a rank")
+    fun perms(user: User) {
+        if (!checkExistence(user, "perms")) return
+        if (!hasPermission(user, Permissions.PERM, "perms")) return
+        RankGui(user)
+
+    }
+
+    @Subcommand("shop")
+    @Description("shop gui")
+    fun shop(user: User) {
+        if (!checkExistence(user, "shop")) return
+        if (!hasPermission(user, Permissions.SHOP, "shop")) return
+        ShopGui(user)
     }
 
     companion object {
 
         fun checkExistence(user: User, command: String): Boolean {
-            if (user.rank == Rank.NOTHING) {
+            return if (user.rank == Rank.NOTHING) {
                 user.msgC("commands $command not-in-army")
-                return false
-            }
-            return true
-        }
-
-        fun checkIfPrisoner(user: User, command: String): Boolean {
-            if (user.rank == Rank.PRISONER) {
-                user.msgC("commands $command prisoner")
-                return true
-            }
-            return false
+                false
+            } else if (!Army.armies.any { it.members.contains(user) }) {
+                user.msgC("commands $command not-in-army")
+                false
+            }else true
         }
 
         fun success(user: User, command: String, vararg rep: Any) {
             user.msgCR("commands $command success", rep)
         }
 
+        fun hasPermission(user: User, permission: Permissions, command: String): Boolean {
+            if (user.hasPermission(permission)) return true
+            user.msgC("commands $command need-permission")
+            return false
+        }
 
     }
 }

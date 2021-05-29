@@ -8,7 +8,7 @@ commands:
     notfound: "&4You don't belong to any army"
   name:
     found: "&cYour army's name is: &3{0}"
-    notfound: "&4You don't belong to any army"
+    not-in-army: "&4You don't belong to any army"
   create:
     already-in-army: "&4You already belong to an army!!"
     success: "&3You created an army successfully"
@@ -22,6 +22,7 @@ commands:
     prisoner: "&4You don't have permission to execute this command"
     success: "&3You are teleported successfully"
   leave:
+    need-permission: "You need permission to leave"
     not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
     prisoner: "&4You are a prisoner you can't leave"
     success: "&aYou left your army!!"
@@ -36,23 +37,25 @@ commands:
   promote:
     not-in-army: "&4WTF you wanna promote a member without being in an army!!!!"
     need-permission: "&cYou don't have permission to promote players"
+    knight: "You can't be the emperor"
+    emperor: "You are already the emperor wtf lol"
     success: "&aYou promoted {0} to the rank {1}"
     user-msg: "&aYou have been promoted by {0} to {1}"
   open:
     not-in-army: "&4You should belong to an army"
-      need-permission: "&cYou don't have permission to open the army"
-      success: "&aYou opened your army, anyone can join now"
+    need-permission: "&cYou don't have permission to open the army"
+    success: "&aYou opened your army, anyone can join now"
   close:
     not-in-army: "&4You should belong to an army"
     need-permission: "&cYou don't have permission to close the army"
     success: "&aYou closed your army, no one can join now"
-
-
-
-
-
-
-
+  perms:
+    not-in-army: "&4You should belong to an army"
+    need-permission: "&cYou don't have permission to close the army"
+  invite:
+    same-army: "you are already in the same army"
+    receiver-msg: "You received invitation by {0} to join his army {1}"
+    sender-msg: "You sent {0} invitation"
 
   treasury:
     not-in-army: "&3You arent in army"

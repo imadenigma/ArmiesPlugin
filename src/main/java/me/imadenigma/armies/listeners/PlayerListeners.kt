@@ -1,18 +1,16 @@
 package me.imadenigma.armies.listeners
 
-import com.google.gson.JsonElement
 import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.colorize
 import me.imadenigma.armies.commands.MainCommands
+import me.imadenigma.armies.compare
 import me.imadenigma.armies.getClaimCard
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Helper
-import me.lucko.helper.nbt.NBT
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
-import me.lucko.helper.serialize.Region
-import me.mattstudios.mfgui.gui.components.ItemBuilder
-import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -21,7 +19,9 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import kotlin.math.roundToInt
 
 class PlayerListeners : Listener {
 
@@ -47,6 +47,7 @@ class PlayerListeners : Listener {
             val item = e.player.inventory.itemInMainHand
             e.player.inventory.remove(item)
         }
+
 
     }
 
@@ -85,8 +86,23 @@ class PlayerListeners : Listener {
         if (e.block.type != Material.BEACON) return
         print("mok")
         val army = Army.armies.firstOrNull { it.core.location.equals(e.block.location) } ?: return
-        army.hp -= 5
+        army.takeDamage(User.getByUUID(e.player.uniqueId))
     }
 
 
+    @EventHandler
+    fun onLoadTurrets(e: PlayerInteractEvent) {
+        if (!e.hasItem()) return
+        if (e.action != Action.RIGHT_CLICK_BLOCK) return
+        val itemInHand = e.player.inventory.itemInMainHand
+        if (itemInHand.type == Material.IRON_NUGGET) {
+            val loc = e.clickedBlock.location
+            Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny().ifPresent {
+                it.addAmmo(
+                    User.getByUUID(e.player.uniqueId), itemInHand.amount
+                )
+                e.player.sendMessage("ammo added".colorize())
+            }
+        }
+    }
 }

@@ -15,6 +15,7 @@ import me.imadenigma.armies.guis.RankGui
 import me.imadenigma.armies.guis.ShopGui
 import me.imadenigma.armies.user.Invite
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.weapons.sentryGun.Sentry0
 import me.lucko.helper.Services
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -159,6 +160,7 @@ class MainCommands : BaseCommand() {
         if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "close")) return
         user.getArmy().isOpened = false
         success(user, "close")
+        Sentry0(user.getPlayer().location,user.getArmy())
     }
 
     @Subcommand("invite")

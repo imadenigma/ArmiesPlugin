@@ -4,24 +4,27 @@ import me.imadenigma.armies.army.ArmyManager
 import me.imadenigma.armies.commands.CommandManager
 import me.imadenigma.armies.listeners.PlayerListeners
 import me.imadenigma.armies.user.UserManager
+import me.imadenigma.armies.weapons.WeaponsManager
 import me.lucko.helper.Helper
 import me.lucko.helper.Services
 import me.lucko.helper.plugin.ExtendedJavaPlugin
-import me.lucko.helper.plugin.ap.Plugin
 import me.lucko.helper.utils.Log
 import net.milkbowl.vault.economy.Economy
 
 
 class Armies : ExtendedJavaPlugin() {
 
-    private var armyManager: ArmyManager = ArmyManager()
-    private var userManager: UserManager = UserManager()
-    var econ: Economy? = null
+    private var armyManager = ArmyManager()
+    private var userManager = UserManager()
+    private var weaponsManager = WeaponsManager()
+    lateinit var econ: Economy
+
     override fun enable() {
         // Plugin startup logic
         Configuration()
         userManager.loadUsers()
         armyManager.loadArmies()
+        weaponsManager.loadWeapons()
         CommandManager()
         if (!setupEcon()) {
             Log.severe("Can't find Vault, please enable vault")
@@ -35,6 +38,7 @@ class Armies : ExtendedJavaPlugin() {
         // Plugin shutdown logic
         userManager.saveUsers()
         armyManager.saveArmies()
+        weaponsManager.saveWeapons()
     }
 
     private fun setupEcon(): Boolean {

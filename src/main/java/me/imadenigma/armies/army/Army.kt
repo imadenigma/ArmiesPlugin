@@ -10,8 +10,8 @@ import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
-import org.bukkit.Chunk
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.block.Block
 import java.util.*
 
@@ -20,6 +20,7 @@ class Army(
     var name: String,
     val owner: UUID,
     val members: MutableSet<User> = mutableSetOf(User.getByUUID(owner)),
+    val turrets: MutableSet<UUID> = mutableSetOf(),
     var isOpened: Boolean = false,
     var core: Block,
     var home: Location,
@@ -52,6 +53,16 @@ class Army(
         user.rank = Rank.NOTHING
     }
 
+
+    fun takeDamage(damager: User) {
+        this.hp -= 5
+        if (this.hp <= 0) {
+            damager.msg("winner")
+        }
+        this.core.type = Material.AIR
+        this.core.state.update()
+    }
+
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
             .addAll(this.members.stream().map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
@@ -60,11 +71,13 @@ class Army(
         val enem = JsonBuilder.array().addAll(this.enemies.map { JsonBuilder.primitive(it.uuid.toString()) })
         val alli = JsonBuilder.array().addAll(this.allies.map { JsonBuilder.primitive(it.uuid.toString()) })
         val areas = JsonBuilder.array().addAll(this.lands.map { it.serialize() })
+        val turrets = JsonBuilder.array().addAll(this.turrets.map { JsonBuilder.primitive(it.toString()) })
         return JsonBuilder.`object`()
             .add("uuid", this.uuid.toString())
             .add("name", this.name)
             .add("owner", this.owner.toString())
             .add("members", jsMembers.build())
+            .add("turrets",turrets.build())
             .add("isOpened", this.isOpened)
             .add("core", pos)
             .add("home",home)
@@ -108,13 +121,14 @@ class Army(
             val name = obj.get("name").asString
             val owner = UUID.fromString(obj.get("owner").asString)
             val members = obj.get("members").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
+            val turrets = obj.get("turrets").asJsonArray.map { it.toUUID() }.toMutableSet()
             val isOpened = obj.get("isOpened").asBoolean
             val core = BlockPosition.deserialize(obj.get("core")).toBlock()
             val home = Position.deserialize(obj.get("home")).toLocation()
             val areas = obj.get("areas").asJsonArray.map { ChunkPosition.deserialize(it) }.toMutableSet()
             val treasury = obj.get("treasury").asDouble
-            val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toSet()
-            val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toSet()
+            val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toMutableSet()
+            val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toMutableSet()
             val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
             val chatType = obj.get("chattype").asCharacter
             val hp = obj.get("hp").asInt
@@ -124,6 +138,7 @@ class Army(
                     name,
                     owner,
                     members,
+                    turrets,
                     isOpened,
                     core,
                     home,

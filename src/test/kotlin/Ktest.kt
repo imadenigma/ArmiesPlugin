@@ -2,6 +2,7 @@ import junit.framework.TestCase
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Rank
 import org.bukkit.Material
+import org.bukkit.entity.Player
 
 class Ktest : TestCase() {
 
@@ -27,6 +28,17 @@ class Ktest : TestCase() {
         }
         val n = mutableSetOf(1,2,2,2,2,2)
         println(n)
+    }
+
+    fun test4() {
+        assert(null !is Player)
+    }
+    fun calcul(vararg note: Double): Double {
+        var total = 0.0
+        for (i in note) {
+            total.plus(i)
+        }
+        return total / note.size
     }
 
 }

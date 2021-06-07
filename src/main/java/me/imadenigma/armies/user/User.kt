@@ -8,7 +8,7 @@ import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.colorize
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
 import me.lucko.helper.gson.GsonSerializable
@@ -53,13 +53,13 @@ class User(
         return Army.armies.first { it.members.contains(this) }
     }
 
-    fun getPlayer(): Player {
-        return Bukkit.getPlayer(this.uuid)
+    fun getPlayer(): Player? {
+        return Bukkit.getPlayer(this.uuid) ?: null
     }
 
     override fun serialize(): JsonElement {
         return JsonBuilder.`object`()
-            .add("uuid", this.uuid.toString())
+            .add("me.imadenigma.armies.weapons.impl.getUuid", this.uuid.toString())
             .add("rank", this.rank.name)
             .add("additionalPerms", JsonBuilder.array().addStrings(additionalPerms.map { it.name }).build())
             .add("deletedPerms",JsonBuilder.array().addStrings(deletedPerms.map { it.name }).build())
@@ -97,7 +97,7 @@ class User(
     }
 
     override fun msg(msg: String) {
-        this.getPlayer().sendMessage(msg.colorize())
+        this.getPlayer()!!.sendMessage(msg.colorize())
     }
 
     companion object {
@@ -107,7 +107,7 @@ class User(
 
         fun deserialize(jsonElement: JsonElement): User {
             val obj = jsonElement.asJsonObject
-            val uuid = UUID.fromString(obj.get("uuid").asString)
+            val uuid = UUID.fromString(obj.get("me.imadenigma.armies.weapons.impl.getUuid").asString)
             val rank = Rank.valueOf(obj.get("rank").asString)
             val addiPerms =
                 obj.get("additionalPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()

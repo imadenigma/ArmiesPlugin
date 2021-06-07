@@ -3,6 +3,7 @@ package me.imadenigma.armies
 import me.imadenigma.armies.army.ArmyManager
 import me.imadenigma.armies.commands.CommandManager
 import me.imadenigma.armies.listeners.PlayerListeners
+import me.imadenigma.armies.listeners.TurretListeners
 import me.imadenigma.armies.user.UserManager
 import me.imadenigma.armies.weapons.WeaponsManager
 import me.lucko.helper.Helper
@@ -50,5 +51,6 @@ class Armies : ExtendedJavaPlugin() {
 
     private fun registerListeners() {
         PlayerListeners()
+        TurretListeners()
     }
 }

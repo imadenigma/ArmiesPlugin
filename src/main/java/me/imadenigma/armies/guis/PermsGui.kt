@@ -4,7 +4,7 @@ import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.user.User
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
@@ -23,7 +23,7 @@ class PermsGui(val user: User, val rank: Rank) {
         gui = Gui(rows, title)
         for (perm in Permissions.values())
             addItem(perm)
-        gui.open(this.user.getPlayer())
+        gui.open(this.user.getPlayer()!!)
     }
 
     private fun addItem(permission: Permissions) {
@@ -36,12 +36,12 @@ class PermsGui(val user: User, val rank: Rank) {
                 it.isCancelled = true
                 if (it.isRightClick) {
                     this.user.getArmy().members.filter { it1 -> it1.rank == rank }.forEach { user1 -> user1.additionalPerms.add(permission); user1.deletedPerms.remove(permission) }
-                    this.user.getPlayer().sendMessage("the permission was added to ${rank.name.toLowerCase()} successfully")
-                    this.gui.close(this.user.getPlayer())
+                    this.user.getPlayer()!!.sendMessage("the permission was added to ${rank.name.toLowerCase()} successfully")
+                    this.gui.close(this.user.getPlayer()!!)
                 }else if (it.isLeftClick) {
                     this.user.getArmy().members.filter { it1 -> it1.rank == rank }.forEach { user1 -> user1.deletedPerms.add(permission); user1.additionalPerms.remove(permission) }
-                    this.user.getPlayer().sendMessage("the permission was removed from ${rank.name.toLowerCase()} successfully")
-                    this.gui.close(this.user.getPlayer())
+                    this.user.getPlayer()!!.sendMessage("the permission was removed from ${rank.name.toLowerCase()} successfully")
+                    this.gui.close(this.user.getPlayer()!!)
                 }
 
             }

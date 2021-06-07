@@ -4,4 +4,4 @@ version: 1.12
 author: Johan Liebert
 depend:
   - Vault
-#updated bb
+  - HolographicDisplays

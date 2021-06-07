@@ -66,7 +66,7 @@ class CommandManager {
             if (it.sender !is Player) return@registerAsyncCompletion mutableListOf<String>()
             val user = User.getByUUID(it.player.uniqueId)
             if (user.isOnArmy()) {
-                return@registerAsyncCompletion user.getArmy().members.map { user1 -> user1.getPlayer().name}
+                return@registerAsyncCompletion user.getArmy().members.map { user1 -> user1.getPlayer()!!.name}
             }
             return@registerAsyncCompletion  mutableListOf<String>()
         }

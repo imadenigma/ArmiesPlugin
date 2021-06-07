@@ -15,7 +15,7 @@ commands:
   sethome:
     not-in-army: "&4You don't belong to any army"
     not-emperor: "&4You don't have permission to execute this command"
-    success: "&3the army's home now is your location"
+    success: "&3the army's home now is your me.imadenigma.armies.weapons.impl.getLocation"
   home:
     not-in-army: "&4You don't belong to any army"
     dont-exists: "&4Your army do not have a home"

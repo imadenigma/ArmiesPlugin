@@ -1,7 +1,7 @@
 package me.imadenigma.armies.user
 
 import me.imadenigma.armies.army.Army
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.*
 import me.lucko.helper.Helper
 import me.lucko.helper.gson.GsonProvider
 import me.lucko.helper.gson.JsonBuilder

@@ -1,3 +1,7 @@
+senty-upgrade-amount: 3 #amount of sentry upgrade items you need to upgrade
+gun-upgrade-amount: 3 #amount of gun turret upgrade items you need to upgrade
+
+
 shop:
   gui-rows: 3
   gui-title: "&aGuiTitle"
@@ -10,6 +14,48 @@ shop:
       slot: 10
       material: PAPER
       glow: true
+      lore:
+        - "first lore"
+        - "second lore"
+    turrets:
+      sentry:
+        price: 5000
+        name: "&3Sentry turret"
+        slot: 4
+        nbt: "turret-sentry" #do not change that ⚠
+        material: GOLD_BLOCK
+        glow: false
+        lore:
+          - "first lore"
+          - "second lore"
+      sentry-upgrade:
+        price: 1000.5
+        name: "&3Sentry upgrade item"
+        slot: 11
+        material: IRON_BLOCK
+        glow: false
+        nbt: "upgrade-sentry"
+        lore:
+          - "first lore"
+          - "second lore"
+      gun-turret:
+        glow: true
+        name: "&3Gun turret"
+        material: FIREBALL
+        nbt: "turret-gun"
+        lore:
+          - "first lore"
+          - "second lore"
+      gun-turret-upgrade:
+        price: 1000.5
+        name: "&gun turret upgrade item"
+        slot: 11
+        material: DIAMOND_AXE
+        glow: false
+        nbt: "upgrade-sentry"
+        lore:
+          - "first lore"
+          - "second lore"
 
 
 

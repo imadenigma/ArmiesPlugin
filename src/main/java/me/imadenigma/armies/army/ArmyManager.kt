@@ -2,7 +2,7 @@ package me.imadenigma.armies.army
 
 import com.google.common.reflect.TypeToken
 import com.google.gson.JsonArray
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.colorize
 import me.lucko.helper.Helper
 import me.lucko.helper.gson.GsonProvider
 import me.lucko.helper.gson.JsonBuilder

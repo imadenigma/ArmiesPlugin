@@ -1,10 +1,11 @@
 package me.imadenigma.armies.listeners
 
 import me.imadenigma.armies.army.Army
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.colorize
 import me.imadenigma.armies.commands.MainCommands
-import me.imadenigma.armies.compare
-import me.imadenigma.armies.getClaimCard
+import me.imadenigma.armies.utils.compare
+import me.imadenigma.armies.utils.getClaimCard
+import me.imadenigma.armies.utils.getSentryUpgradeItem
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Helper
@@ -19,9 +20,7 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
-import org.bukkit.event.entity.EntityTargetLivingEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
-import kotlin.math.roundToInt
 
 class PlayerListeners : Listener {
 
@@ -95,14 +94,18 @@ class PlayerListeners : Listener {
         if (!e.hasItem()) return
         if (e.action != Action.RIGHT_CLICK_BLOCK) return
         val itemInHand = e.player.inventory.itemInMainHand
-        if (itemInHand.type == Material.IRON_NUGGET) {
-            val loc = e.clickedBlock.location
-            Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny().ifPresent {
-                it.addAmmo(
-                    User.getByUUID(e.player.uniqueId), itemInHand.amount
+        val loc = e.clickedBlock.location
+
+        val turret = Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny()
+        if (!turret.isPresent) return
+        val user = User.getByUUID(e.player.uniqueId)
+            if (itemInHand.type == Material.IRON_NUGGET) {
+                turret.get().addAmmo(
+                   user, itemInHand.amount
                 )
-                e.player.sendMessage("ammo added".colorize())
+                e.player.sendMessage("ammo wadded".colorize())
+            }else if (e.player.inventory.contains(getSentryUpgradeItem())) {
+                turret.get().upgrade(user)
             }
-        }
     }
 }

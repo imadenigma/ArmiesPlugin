@@ -1,15 +1,18 @@
 package me.imadenigma.armies.army
 
+import com.google.common.base.Preconditions
 import com.google.gson.JsonElement
 import me.imadenigma.armies.ArmyEconomy
 import me.imadenigma.armies.exceptions.ArmyNotFoundException
-import me.imadenigma.armies.toUUID
+import me.imadenigma.armies.utils.asUUID
 import me.imadenigma.armies.user.User
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
+import me.lucko.helper.utils.Players
+import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
@@ -61,7 +64,17 @@ class Army(
         }
         this.core.type = Material.AIR
         this.core.state.update()
+        if (damager.isOnArmy()) {
+            this.members.forEach {
+                damager.getArmy().members.add(it)
+                it.rank = Rank.PRISONER
+            }
+        }
+        // TODO: 07/06/2021
+        armies.remove(this)
     }
+
+
 
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
@@ -73,7 +86,7 @@ class Army(
         val areas = JsonBuilder.array().addAll(this.lands.map { it.serialize() })
         val turrets = JsonBuilder.array().addAll(this.turrets.map { JsonBuilder.primitive(it.toString()) })
         return JsonBuilder.`object`()
-            .add("uuid", this.uuid.toString())
+            .add("me.imadenigma.armies.weapons.impl.getUuid", this.uuid.toString())
             .add("name", this.name)
             .add("owner", this.owner.toString())
             .add("members", jsMembers.build())
@@ -96,10 +109,12 @@ class Army(
     }
 
     override fun deposit(amount: Double) {
+        Preconditions.checkArgument(amount >= 0, "Amount must be positive")
         this.treasury += amount
     }
 
     override fun withdraw(amount: Double) {
+        Preconditions.checkArgument(amount >= 0, "Amount must be positive")
         if (this.treasury - amount >= 0) {
             this.treasury -= amount
             return
@@ -117,19 +132,19 @@ class Army(
 
         fun deserialize(jsonElement: JsonElement): Army {
             val obj = jsonElement.asJsonObject
-            val uuid = UUID.fromString(obj.get("uuid").asString)
+            val uuid = UUID.fromString(obj.get("me.imadenigma.armies.weapons.impl.getUuid").asString)
             val name = obj.get("name").asString
             val owner = UUID.fromString(obj.get("owner").asString)
-            val members = obj.get("members").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
-            val turrets = obj.get("turrets").asJsonArray.map { it.toUUID() }.toMutableSet()
+            val members = obj.get("members").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
+            val turrets = obj.get("turrets").asJsonArray.map { it.asUUID() }.toMutableSet()
             val isOpened = obj.get("isOpened").asBoolean
             val core = BlockPosition.deserialize(obj.get("core")).toBlock()
             val home = Position.deserialize(obj.get("home")).toLocation()
             val areas = obj.get("areas").asJsonArray.map { ChunkPosition.deserialize(it) }.toMutableSet()
             val treasury = obj.get("treasury").asDouble
-            val enemies = obj.get("enemies").asJsonArray.map { it.toUUID() }.toMutableSet()
-            val allies = obj.get("allies").asJsonArray.map { it.toUUID() }.toMutableSet()
-            val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.toUUID()) }.toMutableSet()
+            val enemies = obj.get("enemies").asJsonArray.map { it.asUUID() }.toMutableSet()
+            val allies = obj.get("allies").asJsonArray.map { it.asUUID() }.toMutableSet()
+            val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
             val chatType = obj.get("chattype").asCharacter
             val hp = obj.get("hp").asInt
             val army =

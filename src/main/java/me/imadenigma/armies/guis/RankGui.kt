@@ -3,7 +3,7 @@ package me.imadenigma.armies.guis
 import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Rank
-import me.imadenigma.armies.colorize
+import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.user.User
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
@@ -24,7 +24,7 @@ class RankGui(val user: User) {
             if (rank == Rank.NOTHING) continue
             addItem(rank)
         }
-        gui.open(this.user.getPlayer())
+        gui.open(this.user.getPlayer()!!)
     }
 
     private fun addItem(rank: Rank) {

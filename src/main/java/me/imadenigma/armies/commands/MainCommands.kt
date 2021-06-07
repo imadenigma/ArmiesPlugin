@@ -15,7 +15,8 @@ import me.imadenigma.armies.guis.RankGui
 import me.imadenigma.armies.guis.ShopGui
 import me.imadenigma.armies.user.Invite
 import me.imadenigma.armies.user.User
-import me.imadenigma.armies.weapons.sentryGun.Sentry0
+import me.imadenigma.armies.weapons.impl.FireballTurret
+import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Services
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -34,7 +35,7 @@ class MainCommands : BaseCommand() {
         }
         success(user, "create")
         user.rank = Rank.EMPEROR
-        val block = user.getPlayer().world.getBlockAt(user.getPlayer().location)
+        val block = user.getPlayer()!!.world.getBlockAt(user.getPlayer()!!.location)
         block.type = Material.BEACON
         block.state.update()
         Army(UUID.randomUUID(), name, user.uuid, core = block, home = block.location)
@@ -42,11 +43,11 @@ class MainCommands : BaseCommand() {
 
 
     @Subcommand("sethome")
-    @Description("set home's location of the army")
+    @Description("set home's me.imadenigma.armies.weapons.impl.getLocation of the army")
     fun sethome(user: User) {
         checkExistence(user, "sethome")
         if (!hasPermission(user, Permissions.SET_HOME, "sethome")) return
-        Army.armies.first { it.owner == user.uuid }.home = user.getPlayer().location
+        Army.armies.first { it.owner == user.uuid }.home = user.getPlayer()!!.location
         success(user, "sethome")
     }
 
@@ -128,8 +129,8 @@ class MainCommands : BaseCommand() {
                 var index = Rank.sorted.indexOf(target.rank) + 1
                 if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
                 target.rank = Rank.sorted[index]
-                success(user, "promote", target.getPlayer().displayName, target.rank.name)
-                user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank.name)
+                success(user, "promote", target.getPlayer()!!.displayName, target.rank.name)
+                user.msgCR("commands promote user-msg", user.getPlayer()!!.displayName, target.rank.name)
             }
         } else {
             if (target.rank == Rank.KNIGHT || target.rank == Rank.EMPEROR) {
@@ -139,8 +140,8 @@ class MainCommands : BaseCommand() {
             var index = Rank.sorted.indexOf(target.rank) + 1
             if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
             target.rank = Rank.sorted[index]
-            success(user, "promote", target.getPlayer().displayName, target.rank.name)
-            user.msgCR("commands promote user-msg", user.getPlayer().displayName, target.rank.name)
+            success(user, "promote", target.getPlayer()!!.displayName, target.rank.name)
+            user.msgCR("commands promote user-msg", user.getPlayer()!!.displayName, target.rank.name)
         }
     }
 
@@ -160,7 +161,6 @@ class MainCommands : BaseCommand() {
         if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "close")) return
         user.getArmy().isOpened = false
         success(user, "close")
-        Sentry0(user.getPlayer().location,user.getArmy())
     }
 
     @Subcommand("invite")
@@ -178,8 +178,8 @@ class MainCommands : BaseCommand() {
             }
         }
         Invite(user, target, user.getArmy())
-        user.msgCR("commands invite sender-msg", user.getPlayer().displayName, user.getArmy().name)
-        target.msgCR("commands invite receiver-msg", user.getPlayer().displayName, user.getArmy().name)
+        user.msgCR("commands invite sender-msg", user.getPlayer()!!.displayName, user.getArmy().name)
+        target.msgCR("commands invite receiver-msg", user.getPlayer()!!.displayName, user.getArmy().name)
 
     }
 
@@ -216,7 +216,7 @@ class MainCommands : BaseCommand() {
             } else if (!Army.armies.any { it.members.contains(user) }) {
                 user.msgC("commands $command not-in-army")
                 false
-            }else true
+            } else true
         }
 
         fun success(user: User, command: String, vararg rep: Any) {

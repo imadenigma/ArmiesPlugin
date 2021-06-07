@@ -39,7 +39,7 @@ Distance 2 chunks
 Damage
 Distance
 
-Gun Turret:: Shoots explosive damage at enemies
+Gun Turret:: Shoots explosive me.imadenigma.armies.weapons.impl.getDamage at enemies
 Damage: 7 Hp no armour
 Explosion 3 block radius
 Distance Half Chunk

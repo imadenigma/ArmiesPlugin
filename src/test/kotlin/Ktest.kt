@@ -1,10 +1,14 @@
 import junit.framework.TestCase
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Rank
+import me.lucko.helper.config.yaml.YAMLConfigurationLoader
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.jetbrains.annotations.TestOnly
+import org.junit.Test
+import java.io.File
 
-class Ktest : TestCase() {
+class Ktest {
 
     fun test1() {
         var str = "my name is {0}, i am {1} yo"
@@ -33,12 +37,12 @@ class Ktest : TestCase() {
     fun test4() {
         assert(null !is Player)
     }
-    fun calcul(vararg note: Double): Double {
-        var total = 0.0
-        for (i in note) {
-            total.plus(i)
-        }
-        return total / note.size
+
+    lateinit var variable: Player
+
+    @Test
+    fun `assert nature of lateinit var`() {
+        assert(!::variable.isInitialized)
     }
 
 }

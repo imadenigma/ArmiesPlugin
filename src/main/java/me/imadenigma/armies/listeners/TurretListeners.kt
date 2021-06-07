@@ -1,6 +1,7 @@
 package me.imadenigma.armies.listeners
 
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.utils.compare
 import me.imadenigma.armies.utils.getGunItem
 import me.imadenigma.armies.utils.getSentryItem
@@ -9,10 +10,12 @@ import me.imadenigma.armies.weapons.impl.FireballTurret
 import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
 import me.lucko.helper.item.ItemStackBuilder
+import me.lucko.helper.metadata.Metadata
 import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.*
@@ -52,7 +55,23 @@ class TurretListeners : Listener {
 
     @EventHandler
     fun onBlockBreak(e: BlockBreakEvent) {
-        if (Turrets.allTurrets.any { it.location.x compare e.block.x && it.location.z compare e.block.z })
+        if (Metadata.provideForBlock(e.block)[MetadataKeys.UNBREAKABLE].isPresent) {
             e.isCancelled = true
+        }
+    }
+
+    @EventHandler
+    fun onBlockDamage(e: BlockDamageEvent) {
+        if (Metadata.provideForBlock(e.block)[MetadataKeys.UNBREAKABLE].isPresent) {
+            e.isCancelled = true
+            Turrets.allTurrets.stream().filter { it.location.x compare e.block.x && it.location.z compare  e.block.z }
+                .findAny()
+                .ifPresent {
+                    it.hp -= 5
+                    if (it.hp <= 0) {
+                        it.despawn()
+                    }
+                }
+        }
     }
 }

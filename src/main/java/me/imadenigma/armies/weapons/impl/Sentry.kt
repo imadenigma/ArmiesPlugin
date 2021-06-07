@@ -23,17 +23,21 @@ class Sentry(
     override val location: Location,
     override val army: Army,
     override var ammo: Int = 100,
-    override var level: Int = 1,
+    override var level: Int = 0,
+    override var hp: Double = 50.0,
     override var damage: Double = 5.0,
     override var distance: Double = 8.0,
     override val uuid: UUID
-) : Turrets("Sentry Turret", location, army, ammo,damage, distance, level, uuid) {
+) : Turrets("Sentry Turret", location, army, ammo, hp, damage, distance, level, uuid) {
+
+    private var isEnabled = true
 
     init {
         if (this.spawn()) {
             allTurrets.add(this)
             this.registerListeners()
             Schedulers.sync().runRepeating(this::function, 2L, 7L)
+            Schedulers.async().runRepeating({ _ -> this.isEnabled = true }, 30L,30L)
         }
  }
 
@@ -50,6 +54,8 @@ class Sentry(
         block2.type = Material.SKULL
         block2.state.update()
         block2.world.spawnFallingBlock(block2.location,block2.state.data)
+        Metadata.provideForBlock(block).put(MetadataKeys.UNBREAKABLE, true)
+        Metadata.provideForBlock(block2).put(MetadataKeys.UNBREAKABLE, true)
         HologramBuilder.updateBlockName(block2, this.name + " $level")
         return true
     }
@@ -61,6 +67,9 @@ class Sentry(
         val block2 = block.getRelative(BlockFace.UP)
         block2.type = Material.AIR
         block2.state.update()
+        army.turrets.remove(this.uuid)
+        allTurrets.remove(this)
+        HologramBuilder.removeBlockName(this.location.add(0.0, 1.0, 0.0).block)
     }
 
     override fun addAmmo(user: User, amount: Int) {
@@ -71,14 +80,15 @@ class Sentry(
                     getPlayer()!!.inventory.remove(content)
                 }
                 this.ammo += amount
+                return
             }
-            return
         }
     }
 
     override fun function() {
         HologramBuilder.updateBlockName(this.location.block.location.add(0.0, 1.0, 0.0).block , this.name + " $level")
         if (this.ammo <= 0) return
+        if (!this.isEnabled) return
         val entity = this.location.world
             .getNearbyEntities(this.location, this.distance, this.distance, this.distance)
             .filterIsInstance(Player::class.java)
@@ -95,6 +105,7 @@ class Sentry(
         val p2 = this.location.toVector()
         val vec = p1.clone().subtract(p2).normalize()
         val dst = loc.distance(entity.location)
+        this.isEnabled = false
         val speed =
             when {
                 dst < 6.5 -> 0.6F

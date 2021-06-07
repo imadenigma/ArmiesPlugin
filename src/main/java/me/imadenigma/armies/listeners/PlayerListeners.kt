@@ -1,17 +1,15 @@
 package me.imadenigma.armies.listeners
 
 import me.imadenigma.armies.army.Army
-import me.imadenigma.armies.utils.colorize
 import me.imadenigma.armies.commands.MainCommands
-import me.imadenigma.armies.utils.compare
-import me.imadenigma.armies.utils.getClaimCard
-import me.imadenigma.armies.utils.getSentryUpgradeItem
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Helper
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
+import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -21,6 +19,7 @@ import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import java.util.*
 
 class PlayerListeners : Listener {
 
@@ -88,7 +87,6 @@ class PlayerListeners : Listener {
         army.takeDamage(User.getByUUID(e.player.uniqueId))
     }
 
-
     @EventHandler
     fun onLoadTurrets(e: PlayerInteractEvent) {
         if (!e.hasItem()) return
@@ -99,13 +97,21 @@ class PlayerListeners : Listener {
         val turret = Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny()
         if (!turret.isPresent) return
         val user = User.getByUUID(e.player.uniqueId)
-            if (itemInHand.type == Material.IRON_NUGGET) {
+        when {
+            itemInHand.type == Material.IRON_NUGGET -> {
                 turret.get().addAmmo(
-                   user, itemInHand.amount
+                    user, itemInHand.amount
                 )
                 e.player.sendMessage("ammo wadded".colorize())
-            }else if (e.player.inventory.contains(getSentryUpgradeItem())) {
+            }
+            itemInHand.type == getSentryUpgradeItem().type -> {
+                Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "sentry" }.findFirst().ifPresent { it.amount-- }
                 turret.get().upgrade(user)
             }
+            itemInHand.type === getGunUpgradeItem().type -> {
+                Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "gun" }.findFirst().ifPresent { it.amount-- }
+                turret.get().upgrade(user)
+            }
+        }
     }
 }

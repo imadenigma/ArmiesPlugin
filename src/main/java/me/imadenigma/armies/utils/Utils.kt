@@ -115,4 +115,5 @@ fun getGunItem(): ItemStack {
 object MetadataKeys {
     val SENTRY: MetadataKey<Boolean> = MetadataKey.createBooleanKey("sentry")
     val GUN: MetadataKey<Boolean> = MetadataKey.createBooleanKey("gun")
+    val UNBREAKABLE: MetadataKey<Boolean> = MetadataKey.createBooleanKey("unbreakable")
 }

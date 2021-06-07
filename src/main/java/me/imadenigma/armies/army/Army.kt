@@ -74,8 +74,6 @@ class Army(
         armies.remove(this)
     }
 
-
-
     override fun serialize(): JsonElement {
         val jsMembers = JsonBuilder.array()
             .addAll(this.members.stream().map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })

@@ -41,6 +41,7 @@ shop:
       gun-turret:
         glow: true
         name: "&3Gun turret"
+        slot: 0
         material: FIREBALL
         nbt: "turret-gun"
         lore:
@@ -49,7 +50,7 @@ shop:
       gun-turret-upgrade:
         price: 1000.5
         name: "&gun turret upgrade item"
-        slot: 11
+        slot: 20
         material: DIAMOND_AXE
         glow: false
         nbt: "upgrade-sentry"

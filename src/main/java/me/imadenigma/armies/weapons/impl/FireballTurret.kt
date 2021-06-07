@@ -11,31 +11,35 @@ import me.lucko.helper.Schedulers
 import me.lucko.helper.metadata.Metadata
 import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.SkullType
 import org.bukkit.block.BlockFace
-import org.bukkit.block.Skull
+import org.bukkit.entity.Explosive
 import org.bukkit.entity.Fireball
 import org.bukkit.entity.Player
+import org.bukkit.event.EventPriority
+import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.entity.ExplosionPrimeEvent
-import org.bukkit.event.entity.ProjectileHitEvent
-import org.bukkit.material.Torch
 import java.util.*
 
 class FireballTurret(
     override val location: Location,
     override val army: Army,
     override var ammo: Int = 100,
-    override var level: Int = 1,
+    override var level: Int = 0,
+    override var hp: Double = 50.0,
     override var damage: Double = 5.0,
     override var distance: Double = 8.0,
     override val uuid: UUID = UUID.randomUUID()
-) : Turrets("Gun Turret", location, army, ammo, damage, distance, level, uuid) {
+) : Turrets("Gun Turret", location, army, ammo, hp, damage, distance, level, uuid) {
+
+    private var isEnabled: Boolean = true
 
     init {
         if (this.spawn()) {
             allTurrets.add(this)
             this.registerListeners()
             Schedulers.sync().runRepeating(this::function, 2L, 7L)
+            Schedulers.async().runRepeating({ _ -> this.isEnabled = true }, 30L, 30L)
         }
     }
 
@@ -50,10 +54,10 @@ class FireballTurret(
         block.type = Material.OBSIDIAN
         block.state.update()
         val block2 = block.location.add(0.0, 1.0, 0.0).block
-        if (army.core == block2) return false
-        block2.type = Material.END_ROD
+        block2.type = Material.BLACK_GLAZED_TERRACOTTA
         block2.state.update()
-        block2.world.spawnFallingBlock(block2.location, block2.state.data)
+        Metadata.provideForBlock(block).put(MetadataKeys.UNBREAKABLE, true)
+        Metadata.provideForBlock(block2).put(MetadataKeys.UNBREAKABLE, true)
         HologramBuilder.updateBlockName(block2, this.name + " $level")
         return true
     }
@@ -65,6 +69,9 @@ class FireballTurret(
         val block2 = block.getRelative(BlockFace.UP)
         block2.type = Material.AIR
         block2.state.update()
+        army.turrets.remove(this.uuid)
+        allTurrets.remove(this)
+        HologramBuilder.removeBlockName(this.location.add(0.0, 1.0, 0.0).block)
     }
 
     override fun addAmmo(user: User, amount: Int) {
@@ -81,8 +88,8 @@ class FireballTurret(
     }
 
     override fun function() {
-        val bool = HologramBuilder.updateBlockName(this.location.block.location.add(0.0, 1.0, 0.0).block, this.name + " $level")
-        if (!bool) return
+        if (!isEnabled)
+            return
         if (this.ammo <= 0) return
         val entity = this.location.world
             .getNearbyEntities(this.location, this.distance, this.distance, this.distance)
@@ -99,14 +106,16 @@ class FireballTurret(
         val loc = this.location.clone().add(0.0, 2.3, 0.0)
         val p2 = this.location.toVector()
         val vec = p1.clone().subtract(p2)
+        this.isEnabled = false
         this.location.world.spawn(loc, Fireball::class.java) {
-            Metadata.provideForEntity(it).put(MetadataKeys.SENTRY, true)
+            Metadata.provideForEntity(it).put(MetadataKeys.GUN, true)
             it.direction = vec.multiply(level * 7)
-            it.yield = when(level) {
+            it.yield = when (level) {
                 1 -> 6F
                 2 -> 8F
                 else -> 10F
             }
+            it.setIsIncendiary(false)
         }
     }
 
@@ -117,6 +126,19 @@ class FireballTurret(
             .handler {
                 it.fire = true
                 it.isCancelled = true
+            }
+        Events.subscribe(EntityExplodeEvent::class.java, EventPriority.HIGHEST)
+            .filter { it.entity is Fireball }
+            .filter { Metadata.provideForEntity(it.entity).has(MetadataKeys.GUN) }
+            .handler {
+                it.blockList().clear()
+            }
+        Events.subscribe(EntityDamageByEntityEvent::class.java)
+            .filter { it.damager is Fireball }
+            .filter { Metadata.provideForEntity(it.damager).has(MetadataKeys.GUN) }
+            .filter { it.entity is Player }
+            .handler {
+                (it.entity as Player).damage(this.damage)
             }
     }
 }

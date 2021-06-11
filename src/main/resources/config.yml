@@ -47,6 +47,15 @@ shop:
         lore:
           - "first lore"
           - "second lore"
+      manual-gun:
+        glow: true
+        name: "&3Manual turret"
+        slot: 18
+        material: FIREWORK
+        nbt: "turret-manual gun"
+        lore:
+          - "first lore"
+          - "second lore"
       gun-turret-upgrade:
         price: 1000.5
         name: "&gun turret upgrade item"

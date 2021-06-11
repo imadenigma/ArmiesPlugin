@@ -97,21 +97,22 @@ class PlayerListeners : Listener {
         val turret = Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny()
         if (!turret.isPresent) return
         val user = User.getByUUID(e.player.uniqueId)
-        when {
-            itemInHand.type == Material.IRON_NUGGET -> {
+        when (itemInHand.type) {
+            Material.IRON_NUGGET -> {
                 turret.get().addAmmo(
                     user, itemInHand.amount
                 )
                 e.player.sendMessage("ammo wadded".colorize())
             }
-            itemInHand.type == getSentryUpgradeItem().type -> {
+            getSentryUpgradeItem().type -> {
                 Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "sentry" }.findFirst().ifPresent { it.amount-- }
                 turret.get().upgrade(user)
             }
-            itemInHand.type === getGunUpgradeItem().type -> {
+            getGunUpgradeItem().type -> {
                 Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "gun" }.findFirst().ifPresent { it.amount-- }
                 turret.get().upgrade(user)
             }
+            else -> return
         }
     }
 }

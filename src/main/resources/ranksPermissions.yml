@@ -7,7 +7,7 @@ ranks:
     name: "&aEmperor"
     glow: true
   KNIGHT:
-    item: GOLDEN_SWORD
+    item: GOLD_SWORD
     slot: 9
     name: "&aKnight"
     glow: true
@@ -17,7 +17,7 @@ ranks:
     name: "&aTroops"
     glow: false
   PRISONER:
-    item: LEAD
+    item: LEASH
     slot: 13
     name: "&aPrisoner"
     glow: false
@@ -26,7 +26,7 @@ permissions:
   gui-title: "&cChoose a rank"
 
   COALITION_CHAT:
-    item: WOODEN_AXE
+    item: WOOD_AXE
     name: "&eCoalition chat"
 
     #complete like this for all these permissions:

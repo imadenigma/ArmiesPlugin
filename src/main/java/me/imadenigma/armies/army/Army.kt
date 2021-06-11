@@ -4,15 +4,13 @@ import com.google.common.base.Preconditions
 import com.google.gson.JsonElement
 import me.imadenigma.armies.ArmyEconomy
 import me.imadenigma.armies.exceptions.ArmyNotFoundException
-import me.imadenigma.armies.utils.asUUID
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.asUUID
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.ChunkPosition
 import me.lucko.helper.serialize.Position
-import me.lucko.helper.utils.Players
-import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
@@ -33,6 +31,7 @@ class Army(
     val enemies: MutableSet<Army> = mutableSetOf(),
     val allies: MutableSet<Army> = mutableSetOf(),
     val prisoners: MutableSet<User> = mutableSetOf(),
+    val invades: MutableSet<Invade> = mutableSetOf(),
     val chatType: Char = 'a'  //either a or c; a = army, c = coalition
 ) : GsonSerializable, ArmyEconomy {
     var enemUUID = setOf<UUID>()
@@ -47,15 +46,28 @@ class Army(
         if (user.rank != Rank.NOTHING) {
             user.getArmy().kickMember(user)
         }
-        user.rank = Rank.TROOPS
+        user.rank = Rank.SOLDIER
         this.members.add(user)
     }
 
     fun kickMember(user: User) {
         this.members.remove(user)
         user.rank = Rank.NOTHING
-    }
+        if (this.members.size == 0) {
+            this.core.type = Material.AIR
+            this.core.state.update()
+            armies.remove(this)
+            this.enemies.clear()
+            this.invades.clear()
+            this.members.clear()
+            this.turrets.clear()
+            this.name = ""
+            this.isOpened = false
+            this.prisoners.clear()
+            this.lands.clear()
+        }
 
+    }
 
     fun takeDamage(damager: User) {
         this.hp -= 5
@@ -69,9 +81,32 @@ class Army(
                 damager.getArmy().members.add(it)
                 it.rank = Rank.PRISONER
             }
+            this.prisoners.forEach {
+                damager.getArmy().members.add(it)
+                it.rank = Rank.PRISONER
+            }
+            this.turrets.forEach { damager.getArmy().turrets.add(it) }
+            for (invade in invades) {
+                if (invade.defender == this.uuid && invade.attacker == damager.getArmy().uuid) {
+                    damager.getArmy().treasury += this.treasury * 0.7
+                    break
+                }
+                if (invade.attacker == this.uuid && invade.defender == damager.getArmy().uuid) {
+                    damager.getArmy().treasury += this.treasury * 0.4
+                    break
+                }
+            }
         }
         // TODO: 07/06/2021
         armies.remove(this)
+        this.enemies.clear()
+        this.invades.clear()
+        this.members.clear()
+        this.turrets.clear()
+        this.name = ""
+        this.isOpened = false
+        this.prisoners.clear()
+        this.lands.clear()
     }
 
     override fun serialize(): JsonElement {
@@ -81,6 +116,8 @@ class Army(
         val home = Position.of(this.home).serialize()
         val enem = JsonBuilder.array().addAll(this.enemies.map { JsonBuilder.primitive(it.uuid.toString()) })
         val alli = JsonBuilder.array().addAll(this.allies.map { JsonBuilder.primitive(it.uuid.toString()) })
+        val invades =
+            JsonBuilder.array().addAll(this.invades.map { JsonBuilder.primitive("${it.attacker}??${it.defender}") })
         val areas = JsonBuilder.array().addAll(this.lands.map { it.serialize() })
         val turrets = JsonBuilder.array().addAll(this.turrets.map { JsonBuilder.primitive(it.toString()) })
         return JsonBuilder.`object`()
@@ -88,16 +125,17 @@ class Army(
             .add("name", this.name)
             .add("owner", this.owner.toString())
             .add("members", jsMembers.build())
-            .add("turrets",turrets.build())
+            .add("turrets", turrets.build())
             .add("isOpened", this.isOpened)
             .add("core", pos)
-            .add("home",home)
-            .add("areas",areas.build())
+            .add("home", home)
+            .add("areas", areas.build())
             .add("treasury", this.treasury)
-            .add("hp",this.hp)
+            .add("hp", this.hp)
             .add("enemies", enem.build())
             .add("allies", alli.build())
             .add("chattype", this.chatType)
+            .add("invades", invades.build())
             .add(
                 "prisoners",
                 JsonBuilder.array().addAll(this.prisoners.map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
@@ -144,6 +182,17 @@ class Army(
             val allies = obj.get("allies").asJsonArray.map { it.asUUID() }.toMutableSet()
             val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
             val chatType = obj.get("chattype").asCharacter
+            val invades = obj["invades"].asJsonArray.map {
+                val str = it.asString
+                val words = str.split("??")
+                var attacker: UUID? = null
+                var defender: UUID? = null
+                kotlin.runCatching {
+                    attacker = UUID.fromString(words[0])
+                    defender = UUID.fromString(words[1])
+                }
+                return@map Invade(attacker!!, defender!!)
+            }.toMutableSet()
             val hp = obj.get("hp").asInt
             val army =
                 Army(
@@ -159,6 +208,7 @@ class Army(
                     treasury,
                     hp,
                     prisoners = prisoners,
+                    invades = invades,
                     chatType = chatType
                 )
             army.enemUUID = enemies
@@ -171,4 +221,6 @@ class Army(
                 .orElseThrow { ArmyNotFoundException(uuid.toString()) }
         }
     }
+
 }
+

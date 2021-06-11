@@ -1,20 +1,27 @@
 package me.imadenigma.armies.weapons
 
 import com.google.gson.JsonElement
+import com.mojang.authlib.GameProfile
+import com.mojang.authlib.properties.Property
 import me.imadenigma.armies.army.Army
-import me.imadenigma.armies.utils.asUUID
-import me.imadenigma.armies.utils.getClaimCard
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.HologramBuilder
+import me.imadenigma.armies.utils.asUUID
 import me.imadenigma.armies.weapons.impl.FireballTurret
+import me.imadenigma.armies.weapons.impl.ManualFireTurret
 import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.Position
+import org.apache.commons.codec.binary.Base64.encodeBase64
 import org.bukkit.Location
+import org.bukkit.Material
+import org.bukkit.SkullType
+import org.bukkit.block.Block
+import org.bukkit.block.BlockFace
+import org.bukkit.block.Skull
 import java.util.*
-import kotlin.concurrent.timer
-import kotlin.concurrent.timerTask
+
 
 abstract class Turrets(
     val name: String,
@@ -35,11 +42,6 @@ abstract class Turrets(
     abstract fun addAmmo(user: User, amount: Int)
     abstract fun function()
     abstract fun registerListeners()
-
-    fun create(user: User) {
-        this.spawn()
-        user.getArmy().turrets.add(this.uuid)
-    }
 
     fun upgrade(upgrader: User) {
         if (this is Sentry) {
@@ -89,6 +91,41 @@ abstract class Turrets(
             .build()
     }
 
+    open fun setSkullBlock(locBloque: Block, url: String) {
+        locBloque.type = Material.SKULL
+        val skullBlock = locBloque.state as Skull
+        skullBlock.skullType = SkullType.PLAYER
+        val profile = GameProfile(UUID.randomUUID(), null)
+        val encodedData = encodeBase64(java.lang.String.format("{textures:{SKIN:{url:\"%s\"}}}", url).toByteArray())
+        profile.properties.put("textures", Property("textures", String(encodedData)))
+        try {
+            val profileField = skullBlock.javaClass.getDeclaredField("profile")
+            profileField.isAccessible = true
+            profileField[skullBlock] = profile
+        } catch (var7: IllegalAccessException) {
+            var7.printStackTrace()
+        } catch (var7: NoSuchFieldException) {
+            var7.printStackTrace()
+        }
+        skullBlock.update()
+    }
+
+    open fun yawToFace(yaw: Float, useSubCardinalDirections: Boolean): BlockFace? {
+        return if (useSubCardinalDirections) radial[Math.round(yaw / 45f) and 0x7].oppositeFace else axis[Math.round(yaw / 90f) and 0x3].oppositeFace
+    }
+
+    private val axis = arrayOf(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)
+    private val radial = arrayOf(
+        BlockFace.NORTH,
+        BlockFace.NORTH_EAST,
+        BlockFace.EAST,
+        BlockFace.SOUTH_EAST,
+        BlockFace.SOUTH,
+        BlockFace.SOUTH_WEST,
+        BlockFace.WEST,
+        BlockFace.NORTH_WEST
+    )
+
     companion object {
         val allTurrets = mutableSetOf<Turrets>()
         fun deserialize(jsonElement: JsonElement) {
@@ -103,11 +140,13 @@ abstract class Turrets(
                 val damage = it["damage"].asDouble
                 val hp = it["hp"].asDouble
                 val distance = it["distance"].asDouble
-                if (type == "sentry") {
-                    Sentry(location, army, ammo, level, hp, damage, distance, uuid)
-                }else FireballTurret(location, army, ammo, level, hp, damage, distance, uuid)
-            }
+                when (type) {
+                    "sentry" -> Sentry(location, army, ammo, level, hp, damage, distance, uuid)
+                    "manual-gun" -> ManualFireTurret(location, army, ammo, hp, damage, distance, level, uuid)
+                    else -> FireballTurret(location, army, ammo, level, hp, damage, distance, uuid)
+                }
 
+            }
         }
     }
 }

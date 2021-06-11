@@ -18,15 +18,14 @@ commands:
     success: "&3the army's home now is your me.imadenigma.armies.weapons.impl.getLocation"
   home:
     not-in-army: "&4You don't belong to any army"
-    dont-exists: "&4Your army do not have a home"
-    prisoner: "&4You don't have permission to execute this command"
+    need-permission: "&4You don't have permission to execute this command"
     success: "&3You are teleported successfully"
   leave:
     need-permission: "You need permission to leave"
     not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
-    prisoner: "&4You are a prisoner you can't leave"
     success: "&aYou left your army!!"
   join:
+    army-not-found: "The army you're looking found cannot be found"
     already-in-army: "&4You are already in army and cannot join two armies in the same time"
     army-closed: "&4The army you are trying to join is closed"
     success: "&aYou joined the army successfully"
@@ -37,10 +36,16 @@ commands:
   promote:
     not-in-army: "&4WTF you wanna promote a member without being in an army!!!!"
     need-permission: "&cYou don't have permission to promote players"
-    knight: "You can't be the emperor"
-    emperor: "You are already the emperor wtf lol"
-    success: "&aYou promoted {0} to the rank {1}"
-    user-msg: "&aYou have been promoted by {0} to {1}"
+    user:
+      knight: "You can't be the emperor"
+      emperor: "You are already the emperor wtf lol"
+      success: "&aYou promoted yourself to the rank {1}"
+    target:
+      user-msg: "&aYou have been promoted by {0} to {1}"
+      knight: "You can't promote an knight cause there is already one"
+      emperor: "the target is already an emperor"
+      success: "&aYou promoted {0} to the rank {1}"
+
   open:
     not-in-army: "&4You should belong to an army"
     need-permission: "&cYou don't have permission to open the army"
@@ -56,7 +61,7 @@ commands:
     same-army: "you are already in the same army"
     receiver-msg: "You received invitation by {0} to join his army {1}"
     sender-msg: "You sent {0} invitation"
-
+    player-not-found: "&4Player not found, maybe offline"
   treasury:
     not-in-army: "&3You arent in army"
     balance: "&3Your army's balance : {0}"

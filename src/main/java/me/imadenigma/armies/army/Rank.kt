@@ -11,17 +11,18 @@ enum class Rank(val permissions: Array<Permissions>) {
             Permissions.INVADE,
             Permissions.PROMOTE,
             Permissions.ENEMY,
-            Permissions.COALITION
+            Permissions.COALITION,
+            Permissions.LEAVE
         )
     ),
-    TROOPS(
+    SOLDIER(
         arrayOf(
-            Permissions.COALITION_CHAT
+            Permissions.LEAVE
         )
     ),
     PEASANT(
         arrayOf(
-            Permissions.COALITION_CHAT
+            Permissions.LEAVE
         )
     ),
     PRISONER(

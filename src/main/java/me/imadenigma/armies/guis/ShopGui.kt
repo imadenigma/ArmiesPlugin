@@ -1,16 +1,14 @@
 package me.imadenigma.armies.guis
 
-import me.imadenigma.armies.*
-import me.imadenigma.armies.utils.*
+import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.*
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
 import me.mattstudios.mfgui.gui.components.ItemBuilder
 import me.mattstudios.mfgui.gui.guis.Gui
 import me.mattstudios.mfgui.gui.guis.GuiItem
-import org.bukkit.Material
 import org.bukkit.inventory.ItemFlag
-import org.bukkit.inventory.ItemStack
 
 class ShopGui(val user: User) {
     private val gui: Gui
@@ -74,6 +72,8 @@ class ShopGui(val user: User) {
                 if (nbt[0] == "turret") {
                     if (nbt[1] == "gun") {
                         getGunItem().give(user)
+                    }else if (nbt[1] == "manual-gun") {
+                        getManualGunItem().give(user)
                     }else getSentryItem().give(user)
                 }else if (nbt[0] == "upgrade") {
                     if (nbt[1] == "gun") {

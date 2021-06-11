@@ -1,6 +1,5 @@
 package me.imadenigma.armies.user
 
-import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import me.imadenigma.armies.Armies
 import me.imadenigma.armies.ArmyEconomy
@@ -23,7 +22,7 @@ import kotlin.collections.HashSet
 
 class User(
     val uuid: UUID,
-    var rank: Rank = Rank.TROOPS,
+    var rank: Rank = Rank.NOTHING,
     val additionalPerms: MutableSet<Permissions> = mutableSetOf(),
     val deletedPerms: MutableSet<Permissions> = mutableSetOf()
 ) : GsonSerializable, Sender, ArmyEconomy {

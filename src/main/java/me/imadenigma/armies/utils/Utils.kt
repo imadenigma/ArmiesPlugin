@@ -20,7 +20,8 @@ private lateinit var sentryItem: ItemStack
 private lateinit var gunItem: ItemStack
 private lateinit var sentryUpItem: ItemStack
 private lateinit var gunUpItem: ItemStack
-
+private lateinit var manualGun: ItemStack
+private lateinit var manualSentry: ItemStack
 fun String.colorize(): String {
     return ChatColor.translateAlternateColorCodes('&', this)!!
 }
@@ -102,6 +103,12 @@ fun getGunItem(): ItemStack {
     return ItemNBT.setNBTTag(parseItem(node), "turret", "gun").also { gunItem = it }
 }
 
+fun getManualGunItem(): ItemStack {
+    if (::manualGun.isInitialized) return manualGun
+    val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "manual-gun")
+    return ItemNBT.setNBTTag(parseItem(node), "turret", "manual-gun").also { gunItem = it }
+
+}
 
 
 

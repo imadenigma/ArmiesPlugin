@@ -3,20 +3,17 @@ package me.imadenigma.armies.listeners
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.utils.compare
-import me.imadenigma.armies.utils.getGunItem
-import me.imadenigma.armies.utils.getSentryItem
 import me.imadenigma.armies.weapons.Turrets
 import me.imadenigma.armies.weapons.impl.FireballTurret
+import me.imadenigma.armies.weapons.impl.ManualFireTurret
 import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
-import me.lucko.helper.item.ItemStackBuilder
 import me.lucko.helper.metadata.Metadata
 import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
-import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.*
 
@@ -50,6 +47,17 @@ class TurretListeners : Listener {
             else FireballTurret(e.player.location, user.getArmy(), uuid = UUID.randomUUID())
             println("cc")
             e.item.amount -= 1
+            return
+        }
+        if (ItemNBT.getNBTTag(e.item, "turret") == "manual gun") {
+            if (e.hasBlock()) ManualFireTurret(
+                e.clickedBlock.location.add(0.0, 1.0, 0.0),
+                user.getArmy(),
+                uuid = UUID.randomUUID()
+            )
+            else ManualFireTurret(e.player.location, user.getArmy(), uuid = UUID.randomUUID())
+            e.item.amount -= 1
+            return
         }
     }
 

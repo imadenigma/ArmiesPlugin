@@ -1,10 +1,10 @@
 package me.imadenigma.armies.weapons.impl
 
 import com.google.gson.JsonElement
-import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.HologramBuilder
+import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Events
 import me.lucko.helper.Schedulers
@@ -12,7 +12,8 @@ import me.lucko.helper.metadata.Metadata
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.BlockFace
-import org.bukkit.entity.*
+import org.bukkit.entity.Arrow
+import org.bukkit.entity.Player
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import java.util.*
@@ -37,9 +38,14 @@ class Sentry(
             allTurrets.add(this)
             this.registerListeners()
             Schedulers.sync().runRepeating(this::function, 2L, 7L)
-            Schedulers.async().runRepeating({ _ -> this.isEnabled = true }, 30L,30L)
+            Schedulers.async().runRepeating({ task ->
+                if (this.hp <= 0.0) {
+                    task.close()
+                }
+                this.isEnabled = true
+            }, 30L, 30L)
         }
- }
+    }
 
     override fun spawn(): Boolean {
         val block = this.location.block
@@ -50,10 +56,8 @@ class Sentry(
         block.type = Material.REDSTONE_BLOCK
         block.state.update()
         val block2 = block.location.add(0.0, 1.0, 0.0).block
-        if (army.core == block2) return false
         block2.type = Material.SKULL
         block2.state.update()
-        block2.world.spawnFallingBlock(block2.location,block2.state.data)
         Metadata.provideForBlock(block).put(MetadataKeys.UNBREAKABLE, true)
         Metadata.provideForBlock(block2).put(MetadataKeys.UNBREAKABLE, true)
         HologramBuilder.updateBlockName(block2, this.name + " $level")
@@ -86,7 +90,6 @@ class Sentry(
     }
 
     override fun function() {
-        HologramBuilder.updateBlockName(this.location.block.location.add(0.0, 1.0, 0.0).block , this.name + " $level")
         if (this.ammo <= 0) return
         if (!this.isEnabled) return
         val entity = this.location.world

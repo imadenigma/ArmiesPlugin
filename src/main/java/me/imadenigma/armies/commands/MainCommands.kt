@@ -12,14 +12,17 @@ import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
 import me.imadenigma.armies.guis.RankGui
-import me.imadenigma.armies.guis.ShopGui
 import me.imadenigma.armies.user.Invite
 import me.imadenigma.armies.user.User
-import me.imadenigma.armies.weapons.impl.FireballTurret
-import me.imadenigma.armies.weapons.impl.Sentry
+import me.imadenigma.armies.weapons.impl.ManualFireTurret
 import me.lucko.helper.Services
+import me.lucko.helper.utils.Players
+import net.md_5.bungee.api.ChatColor
+import net.md_5.bungee.api.chat.ClickEvent
+import net.md_5.bungee.api.chat.TextComponent
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.material.Skull
 import java.util.*
 
 @CommandAlias("a|army")
@@ -33,6 +36,10 @@ class MainCommands : BaseCommand() {
             user.msgC("commands create already-in-army")
             return
         }
+        if (Army.armies.any { it.name.contains(name) || name.contains(it.name) }) {
+            user.msg("&4Name taken")
+            return
+        }
         success(user, "create")
         user.rank = Rank.EMPEROR
         val block = user.getPlayer()!!.world.getBlockAt(user.getPlayer()!!.location)
@@ -41,15 +48,15 @@ class MainCommands : BaseCommand() {
         Army(UUID.randomUUID(), name, user.uuid, core = block, home = block.location)
     }
 
-
     @Subcommand("sethome")
-    @Description("set home's me.imadenigma.armies.weapons.impl.getLocation of the army")
+    @Description("set home's location of the army")
     fun sethome(user: User) {
         checkExistence(user, "sethome")
         if (!hasPermission(user, Permissions.SET_HOME, "sethome")) return
-        Army.armies.first { it.owner == user.uuid }.home = user.getPlayer()!!.location
+        Army.armies.first { it.members.contains(user) }.home = user.getPlayer()!!.location
         success(user, "sethome")
     }
+
 
     @Subcommand("home")
     @Description("teleport to your army's home")
@@ -82,67 +89,32 @@ class MainCommands : BaseCommand() {
         user.getArmy().kickMember(user)
     }
 
-
     @Subcommand("join")
     @CommandCompletion("@army")
     @Syntax("<army>")
     @Description("join an army")
-    fun join(user: User, army: Army) {
+    fun join(user: User, armyName: String) {
+        val army = Army.armies.firstOrNull { it.name.equals(armyName, true) } ?: run {
+            user.msgC("commands join army-not-found")
+            return
+        }
         if (user.rank != Rank.NOTHING) {
             user.msgC("commands join already-in-army")
             return
         }
+
         if (!army.isOpened) {
-            if (Invite.allInvites.any { it.receiver == user }) {
-                if (Invite.allInvites.first { it.receiver.uuid == user.uuid }.army == army) {
-                    user.msgC("commands join success")
-                    army.addMember(user)
-                    success(user, "join")
-                    return
-                }
+            val targetArm = Invite.allInvites.firstOrNull { it.receiver == user }?.army
+            if (targetArm == army) {
+                army.addMember(user)
+                success(user, "join")
+                return
             }
             user.msgC("commands join army-closed")
             return
         }
-        user.msgC("commands join success")
         army.addMember(user)
         success(user, "join")
-    }
-
-
-    @Subcommand("promote")
-    @Description("promote a member to another rank")
-    @CommandCompletion("@local_user")
-    fun promote(user: User, @Flags("other") @Optional target: User) {
-        if (!hasPermission(user, Permissions.PROMOTE, "promote")) return
-        if (!checkExistence(user, "promote")) return
-        if (target == null) {
-            if (user.rank == Rank.EMPEROR) {
-                user.msgC("commands promote emperor")
-                return
-            }
-            if (user.rank == Rank.KNIGHT) {
-                user.msgC("commands promote knight")
-                return
-            }
-            if (user.hasPermission(Permissions.PROMOTE)) {
-                var index = Rank.sorted.indexOf(target.rank) + 1
-                if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
-                target.rank = Rank.sorted[index]
-                success(user, "promote", target.getPlayer()!!.displayName, target.rank.name)
-                user.msgCR("commands promote user-msg", user.getPlayer()!!.displayName, target.rank.name)
-            }
-        } else {
-            if (target.rank == Rank.KNIGHT || target.rank == Rank.EMPEROR) {
-                user.msg("failed")
-                return
-            }
-            var index = Rank.sorted.indexOf(target.rank) + 1
-            if (index == Rank.sorted.size || index == Rank.sorted.size - 1) index = Rank.sorted.size - 2
-            target.rank = Rank.sorted[index]
-            success(user, "promote", target.getPlayer()!!.displayName, target.rank.name)
-            user.msgCR("commands promote user-msg", user.getPlayer()!!.displayName, target.rank.name)
-        }
     }
 
     @Subcommand("open")
@@ -163,25 +135,6 @@ class MainCommands : BaseCommand() {
         success(user, "close")
     }
 
-    @Subcommand("invite")
-    @CommandCompletion("@user")
-    @Syntax("<user>")
-    @Description("invite your mate to join your army")
-    fun invite(user: User, @Flags("other") @Optional target: User) {
-        if (target == null) return
-        if (!checkExistence(user, "invite")) return
-        if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "invite")) return
-        if (target.isOnArmy()) {
-            if (target.getArmy() == user.getArmy()) {
-                user.msgC("commands invite same-army")
-                return
-            }
-        }
-        Invite(user, target, user.getArmy())
-        user.msgCR("commands invite sender-msg", user.getPlayer()!!.displayName, user.getArmy().name)
-        target.msgCR("commands invite receiver-msg", user.getPlayer()!!.displayName, user.getArmy().name)
-
-    }
 
     @Subcommand("name")
     @Description("returns the name of your army")
@@ -190,22 +143,119 @@ class MainCommands : BaseCommand() {
         user.msgCR("commands name found", user.getArmy().name)
     }
 
+    @Subcommand("names")
+    @Description("names of all armies")
+    fun names(user: User) {
+        Army.armies.forEach { user.msg("&a${it.name}") }
+    }
+
+    @Subcommand("invite")
+    @CommandCompletion("@user")
+    @Syntax("<user>")
+    @Description("invite your mate to join your army")
+    fun invite(user: User, targetStr: String?) {
+        if (!checkExistence(user, "invite")) return
+        if (!hasPermission(user, Permissions.OPEN_OR_CLOSE, "invite")) return
+        val target =
+            User.users.filter { it.getPlayer() != null }.firstOrNull { it.getPlayer()!!.name.equals(targetStr, true) }
+                ?: kotlin.run {
+                    user.msgCR("commands invite player-not-found", targetStr ?: "")
+                    return
+                }
+        if (user == target) {
+            user.msg("&4You cannot invite yourself")
+            return
+        }
+        println("user: $user &&&&& target: $target")
+        if (target.isOnArmy()) {
+            if (target.getArmy() == user.getArmy()) {
+                user.msgC("commands invite same-army")
+                return
+            }
+        }
+        val invite = Invite(user, target, user.getArmy())
+        val msg = TextComponent("Click Here to accept")
+        msg.color = ChatColor.GREEN
+        msg.isBold = true
+        msg.clickEvent = ClickEvent(ClickEvent.Action.RUN_COMMAND, "/a join ${user.getArmy().name}")
+
+        invite.sender.msgCR(
+            "commands invite sender-msg",
+            invite.receiver.getPlayer()!!.displayName,
+            user.getArmy().name
+        )
+        invite.receiver.msgCR(
+            "commands invite receiver-msg",
+            invite.sender.getPlayer()!!.displayName,
+            user.getArmy().name
+        )
+        if (Players.getOffline(target.uuid).isPresent) target.getPlayer()!!.spigot().sendMessage(msg)
+    }
+
     @Subcommand("perms")
     @Description("add or take a permission from a rank")
     fun perms(user: User) {
         if (!checkExistence(user, "perms")) return
         if (!hasPermission(user, Permissions.PERM, "perms")) return
         RankGui(user)
-
     }
 
-    @Subcommand("shop")
-    @Description("shop gui")
-    fun shop(user: User) {
-        if (!checkExistence(user, "shop")) return
-        if (!hasPermission(user, Permissions.SHOP, "shop")) return
-        ShopGui(user)
+    @Subcommand("rank")
+    @Description("display your rank")
+    fun rank(user: User) {
+        if (!checkExistence(user, "rank")) return
+        user.msg("&3You rank is: ${user.rank}")
+        ManualFireTurret(user.getPlayer()!!.location, user.getArmy(), 100, 100.0, 0.0, 0.0, 1, UUID.randomUUID())
     }
+
+    //                              //
+    //         NEED FIXING          //
+    //                              //
+
+    @Subcommand("promote")
+    @Description("promote a member to another rank")
+    @Syntax("[target]")
+    @CommandCompletion("@local_user")
+    fun promote(user: User, @Optional targetName: String?) {
+        if (!checkExistence(user, "promote")) return
+        if (!hasPermission(user, Permissions.PROMOTE, "promote")) return
+        val target = User.users.stream()
+            .filter { Objects.nonNull(it.getPlayer()) }
+            .filter { it.getPlayer()!!.name.equals(targetName, true) }
+            .findAny()
+        Skull()
+        if (!target.isPresent) {
+            if (hasPermission(user, Permissions.PROMOTE, "promote")) {
+                if (user.rank == Rank.EMPEROR) {
+                    user.msgC("commands promote user emperor")
+                    return
+                }
+                if (user.rank == Rank.KNIGHT) {
+                    user.msgC("commands promote user knight")
+                    return
+                }
+                val nextRank = getNextRank(user.rank)!!
+                user.rank = nextRank
+                success(user, "promote user", "", user.rank.name)
+            }
+            return
+        }
+        if (user.hasPermission(Permissions.PROMOTE)) {
+            if (target.get().rank == Rank.EMPEROR) {
+                user.msgC("commands promote target emperor")
+                return
+            }
+            if (target.get().rank == Rank.KNIGHT) {
+                user.msgC("commands promote target knight")
+                return
+            }
+            val nextRank = getNextRank(target.get().rank)
+            target.get().rank = nextRank!!
+            success(user, "promote target", Players.getOffline(target.get().uuid).get().name, target.get().rank.name)
+            user.msgCR("commands promote user-msg", user.getPlayer()!!.displayName, target.get().rank.name)
+        }
+    }
+
 
     companion object {
 
@@ -229,5 +279,12 @@ class MainCommands : BaseCommand() {
             return false
         }
 
+        fun getNextRank(rank: Rank): Rank? {
+            if (rank == Rank.KNIGHT) return Rank.EMPEROR
+            if (rank == Rank.SOLDIER) return Rank.KNIGHT
+            if (rank == Rank.PEASANT) return Rank.SOLDIER
+            if (rank == Rank.PRISONER) return Rank.PEASANT
+            return null
+        }
     }
 }

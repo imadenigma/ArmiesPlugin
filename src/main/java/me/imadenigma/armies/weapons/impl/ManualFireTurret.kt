@@ -11,55 +11,65 @@ import me.lucko.helper.Schedulers
 import me.lucko.helper.metadata.Metadata
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.block.Block
 import org.bukkit.block.BlockFace
+import org.bukkit.block.Skull
 import org.bukkit.entity.Fireball
 import org.bukkit.entity.Player
-import org.bukkit.event.EventPriority
-import org.bukkit.event.entity.EntityDamageByEntityEvent
-import org.bukkit.event.entity.EntityExplodeEvent
+import org.bukkit.event.block.Action
+import org.bukkit.event.player.PlayerInteractEvent
 import java.util.*
 
-class FireballTurret(
+class ManualFireTurret(
     override val location: Location,
     override val army: Army,
     override var ammo: Int = 100,
-    override var level: Int = 0,
     override var hp: Double = 50.0,
     override var damage: Double = 5.0,
-    override var distance: Double = 8.0,
-    override val uuid: UUID = UUID.randomUUID()
-) : Turrets("Gun Turret", location, army, ammo, hp, damage, distance, level, uuid) {
+    override var distance: Double = 100.0,
+    override var level: Int = 1,
+    override val uuid: UUID
+) : Turrets("Manual gun turret", location, army, ammo, hp, damage, distance, level, uuid) {
 
     private var isEnabled: Boolean = true
     private var isWorking: Boolean = true
+    private lateinit var skull: Block
     init {
         if (this.spawn()) {
             allTurrets.add(this)
             this.registerListeners()
-            Schedulers.sync().runRepeating(this::function, 2L, 7L)
             Schedulers.async().runRepeating({ _ -> this.isEnabled = true }, 40L, 40L)
         }
     }
 
-
     override fun serialize(): JsonElement {
-        return serialise("gun-$level")
+        return serialise("manual-gun")
     }
 
     override fun spawn(): Boolean {
         val block = this.location.block
-        if (army.core == block) return false
-        block.type = Material.OBSIDIAN
+        if (army.core == block) {
+            this.location.add(1.0, 0.0, 0.0)
+            return spawn()
+        }
+        block.type = Material.BLACK_GLAZED_TERRACOTTA
         block.state.update()
         val block2 = block.location.add(0.0, 1.0, 0.0).block
         block2.type = Material.SKULL
-        setSkullBlock(block2, "http://textures.minecraft.net/texture/d6db137a35679beaf790070d0c9c96c90676260ebc00dd2c700562a099db07c0")
+        kotlin.runCatching  {
+            setSkullBlock(
+                block2,
+                "http://textures.minecraft.net/texture/d6db137a35679beaf790070d0c9c96c90676260ebc00dd2c700562a099db07c0"
+            )
+        }
         block2.state.update()
+        skull = block2
         Metadata.provideForBlock(block).put(MetadataKeys.UNBREAKABLE, true)
         Metadata.provideForBlock(block2).put(MetadataKeys.UNBREAKABLE, true)
         HologramBuilder.updateBlockName(block2, this.name + " $level")
         return true
     }
+
 
     override fun despawn() {
         val block = this.location.block
@@ -70,8 +80,7 @@ class FireballTurret(
         block2.state.update()
         army.turrets.remove(this.uuid)
         allTurrets.remove(this)
-        HologramBuilder.removeBlockName(this.location.add(0.0, 1.0, 0.0).block)
-        this.isWorking = false
+        HologramBuilder.removeBlockName(this.location.add(0.0, 0.7, 0.5).block)
     }
 
     override fun addAmmo(user: User, amount: Int) {
@@ -87,29 +96,16 @@ class FireballTurret(
         }
     }
 
-    override fun function() {
+
+    fun playerFunc(player: Player) {
         if (!isEnabled || !isWorking)
             return
         if (this.ammo <= 0) return
-        val entity = this.location.world
-            .getNearbyEntities(this.location, this.distance, this.distance, this.distance)
-            .filterIsInstance(Player::class.java)
-            .filterNot {
-                val user = User.getByUUID(it.uniqueId)
-                if (!user.isOnArmy()) return@filterNot false
-                else return@filterNot if (user.getArmy() == this.army) return@filterNot true
-                else false
-            }
-            .firstOrNull() ?: return
         this.ammo--
-        val p1 = entity.location.subtract(0.0, 1.0, 0.0).toVector()
-        val loc = this.location.clone().add(0.0, 2.0, 0.0)
-        val p2 = this.location.toVector()
-        val vec = p1.clone().subtract(p2)
         this.isEnabled = false
-        this.location.world.spawn(loc, Fireball::class.java) {
+        this.location.world.spawn(this.skull.getRelative(yawToFace(player.location.yaw, true)).location.add(0.0, 1.5, 0.0), Fireball::class.java) {
             Metadata.provideForEntity(it).put(MetadataKeys.GUN, true)
-            it.direction = vec.multiply(3)
+            it.direction = player.eyeLocation.direction
             it.yield = when (level) {
                 1 -> 6F
                 2 -> 8F
@@ -118,22 +114,20 @@ class FireballTurret(
         }
     }
 
+    override fun function() {}
+
     override fun registerListeners() {
-        Events.subscribe(EntityExplodeEvent::class.java, EventPriority.HIGHEST)
-            .filter { it.entity is Fireball }
-            .filter { Metadata.provideForEntity(it.entity).has(MetadataKeys.GUN) }
-            .handler {
-                println("fireball turret")
-                it.blockList().clear()
-            }
-        Events.subscribe(EntityDamageByEntityEvent::class.java)
-            .filter { it.damager is Fireball }
-            .filter { Metadata.provideForEntity(it.damager).has(MetadataKeys.GUN) }
-            .filter { it.entity is Player }
-            .handler {
-                println("damage bb $damage!")
-                it.damage = 0.0
-                (it.entity as Player).damage(this.damage)
-            }
+        Events.subscribe(PlayerInteractEvent::class.java)
+            .filter { it.action == Action.RIGHT_CLICK_BLOCK }
+            .filter { it.clickedBlock == this.skull }
+            .handler { e ->
+                println("playerFunc")
+                this.playerFunc(e.player)
+                runCatching {
+                    val head = skull.state as Skull
+                    head.rotation = yawToFace(e.player.location.yaw, true)
+                    head.update()
+                }
+        }
     }
 }

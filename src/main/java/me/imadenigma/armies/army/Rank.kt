@@ -12,23 +12,37 @@ enum class Rank(val permissions: Array<Permissions>) {
             Permissions.PROMOTE,
             Permissions.ENEMY,
             Permissions.COALITION,
-            Permissions.LEAVE
+            Permissions.LEAVE,
+            Permissions.INVITE,
+            Permissions.MENU,
+            Permissions.DEPOSIT_BALANCE,
+            Permissions.OPEN_OR_CLOSE,
+            Permissions.HOME,
+            Permissions.CHAT
+
         )
     ),
     SOLDIER(
         arrayOf(
-            Permissions.LEAVE
-        )
+            Permissions.HOME,
+            Permissions.CHAT,
+            Permissions.LEAVE,
+            Permissions.INVITE,
+            Permissions.COALITION_CHAT
+            )
     ),
     PEASANT(
         arrayOf(
+            Permissions.HOME,
+            Permissions.CHAT,
+            Permissions.LEAVE,
+            Permissions.INVITE,
+            Permissions.COALITION_CHAT,
             Permissions.LEAVE
         )
     ),
     PRISONER(
-        arrayOf(
-            Permissions.COALITION_CHAT
-        )
+        arrayOf()
     ),
     NOTHING(arrayOf());
 

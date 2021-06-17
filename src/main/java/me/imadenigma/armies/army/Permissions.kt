@@ -2,6 +2,7 @@ package me.imadenigma.armies.army
 
 enum class Permissions {
     COALITION_CHAT,
+    CHAT,
     BUILD,
     BREAK,
     INVADE,
@@ -20,5 +21,8 @@ enum class Permissions {
     WITHDRAW_BALANCE,
     HOME,
     LEAVE,
-    SHOP
+    SHOP,
+    DEPOSIT_BALANCE,
+    DEMOTE,
+    KICK
 }

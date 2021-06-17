@@ -1,15 +1,17 @@
 package me.imadenigma.armies.listeners
 
 import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.army.Permissions
+import me.imadenigma.armies.army.Rank
 import me.imadenigma.armies.commands.MainCommands
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.weapons.Turrets
+import me.imadenigma.armies.weapons.impl.FireballTurret
+import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
-import me.lucko.helper.serialize.BlockPosition
-import me.lucko.helper.serialize.ChunkPosition
-import me.lucko.helper.serialize.Position
 import me.mattstudios.mfgui.gui.components.ItemNBT
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -18,8 +20,9 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerInteractEvent
-import java.util.*
+import org.bukkit.event.player.PlayerMoveEvent
 
 class PlayerListeners : Listener {
 
@@ -34,57 +37,65 @@ class PlayerListeners : Listener {
         val user = User.getByUUID(e.player.uniqueId)
         if (!MainCommands.checkExistence(user, "name")) return
         if (!getClaimCard().isSimilar(e.player.inventory.itemInMainHand)) return
-        val pos = Position.of(e.player.location)
-        val bool = Army.armies.any { it.lands.any { land -> land.contains(pos) } }
-        if (bool) {
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z)
+        if (army != null) {
             e.player.sendMessage("this area is taken")
             return
         } else {
-            user.getArmy().lands.add(ChunkPosition.of(e.player.location.chunk))
+            user.getArmy().claimArea(e.player.location)
             e.player.sendMessage("you claim the area successfully")
-            val item = e.player.inventory.itemInMainHand
-            e.player.inventory.remove(item)
+            e.player.inventory.itemInMainHand.amount--
         }
 
 
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.LOWEST)
     fun onBlockBreak(e: BlockBreakEvent) {
-        if (!(Army.armies.any { it.lands.any { land -> land.contains(BlockPosition.of(e.block)) } })) return
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: return
         val user = User.getByUUID(e.player.uniqueId)
-        if (!user.isOnArmy()) {
-            e.isCancelled = true
-            return
-        }
-        if (user.getArmy().lands.none { it.contains(BlockPosition.of(e.block)) }) {
-            e.isCancelled = true
-            return
-        }
+        when {
+            !user.isOnArmy() -> e.isCancelled = true
 
+            user.getArmy() == army && (e.block == army.core || !user.hasPermission(Permissions.BREAK)) -> e.isCancelled = true
+
+            e.block == army.core && user.getArmy() != army && (user.rank == Rank.EMPEROR || user.rank == Rank.KNIGHT || user.rank == Rank.SOLDIER) -> {
+                army.takeDamage(user)
+                e.isCancelled = true
+            }
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onBuildBreak(e: BlockPlaceEvent) {
-        if (Army.armies.none { it.lands.any { land -> land.contains(BlockPosition.of(e.block)) } }) return
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: return
         val user = User.getByUUID(e.player.uniqueId)
-        if (!user.isOnArmy()) {
-            e.isCancelled = true
-            return
+        when {
+            !user.isOnArmy() -> {
+                e.isCancelled = true
+            }
+            user.getArmy() != army -> {
+                e.isCancelled = true
+            }
+            !user.hasPermission(Permissions.BUILD) -> {
+                e.isCancelled = true
+            }
         }
-        if (user.getArmy().lands.none { it.contains(BlockPosition.of(e.block)) }) {
-            e.isCancelled = true
-            return
-        }
-
     }
 
     @EventHandler
     fun onDamageBlock(e: BlockDamageEvent) {
+        val turret = Turrets.allTurrets.firstOrNull { it.location.x compare e.block.x && it.location.z compare e.block.z }
+        if (turret != null) {
+            turret.hp -= 5
+            if (turret.hp <= 0) turret.despawn()
+        }
         if (e.block.type != Material.BEACON) return
-        print("mok")
         val army = Army.armies.firstOrNull { it.core.location.equals(e.block.location) } ?: return
-        army.takeDamage(User.getByUUID(e.player.uniqueId))
+        val user = User.getByUUID(e.player.uniqueId)
+        if (!user.isOnArmy()) { e.isCancelled = true; return }
+        if (user.getArmy() == army) { e.isCancelled = true; return }
+        army.takeDamage(user)
     }
 
     @EventHandler
@@ -93,26 +104,51 @@ class PlayerListeners : Listener {
         if (e.action != Action.RIGHT_CLICK_BLOCK) return
         val itemInHand = e.player.inventory.itemInMainHand
         val loc = e.clickedBlock.location
-
         val turret = Turrets.allTurrets.stream().filter { it.location.world == loc.world && it.location.x compare loc.x  && it.location.z compare loc.z }.findAny()
         if (!turret.isPresent) return
         val user = User.getByUUID(e.player.uniqueId)
+        if (ItemNBT.getNBTTag(itemInHand, "upgrade") == "") return
         when (itemInHand.type) {
             Material.IRON_NUGGET -> {
                 turret.get().addAmmo(
                     user, itemInHand.amount
                 )
-                e.player.sendMessage("ammo wadded".colorize())
+                e.player.sendMessage("&aammo added".colorize())
             }
             getSentryUpgradeItem().type -> {
-                Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "sentry" }.findFirst().ifPresent { it.amount-- }
-                turret.get().upgrade(user)
+                if (turret.get() is Sentry) {
+                    turret.get().upgrade(user)
+                    itemInHand.amount--
+                }
             }
             getGunUpgradeItem().type -> {
-                Arrays.stream(e.player.inventory.contents).filter { ItemNBT.getNBTTag(it, "upgrade") == "gun" }.findFirst().ifPresent { it.amount-- }
-                turret.get().upgrade(user)
+                if (turret.get() is FireballTurret) {
+                    turret.get().upgrade(user)
+                    itemInHand.amount--
+                }
             }
             else -> return
         }
     }
+
+    @EventHandler
+    fun onPlayerDeath(e: PlayerDeathEvent) {
+        val user = User.getByUUID(e.entity.uniqueId)
+        if (!user.isOnArmy()) return
+        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "banip ${e.entity.name} Dead in army !")
+    }
+
+    @EventHandler
+    fun onPlayerMove(e: PlayerMoveEvent) {
+        val user = User.getByUUID(e.player.uniqueId)
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z)
+        if (army != null && user.isOutsideArea) {
+            e.player.sendTitle("&3&l${army.name}".colorize(), "", 10, 70, 20)
+            user.isOutsideArea = false
+        }else if (army == null && !user.isOutsideArea)  {
+            e.player.sendTitle("&a&lWilderness".colorize(), "&lIt's dangerous out here!".colorize(), 10, 70, 20)
+            user.isOutsideArea = true
+        }
+    }
+
 }

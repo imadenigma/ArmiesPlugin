@@ -2,6 +2,7 @@ package me.imadenigma.armies
 
 import me.imadenigma.armies.army.ArmyManager
 import me.imadenigma.armies.commands.CommandManager
+import me.imadenigma.armies.listeners.ChatListener
 import me.imadenigma.armies.listeners.PlayerListeners
 import me.imadenigma.armies.listeners.TurretListeners
 import me.imadenigma.armies.user.UserManager
@@ -52,5 +53,6 @@ class Armies : ExtendedJavaPlugin() {
     private fun registerListeners() {
         PlayerListeners()
         TurretListeners()
+        ChatListener()
     }
 }

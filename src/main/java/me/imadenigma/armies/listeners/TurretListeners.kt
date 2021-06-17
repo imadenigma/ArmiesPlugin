@@ -10,10 +10,12 @@ import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
 import me.lucko.helper.metadata.Metadata
 import me.mattstudios.mfgui.gui.components.ItemNBT
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
+import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.*
 
@@ -27,7 +29,6 @@ class TurretListeners : Listener {
     fun onPlayerInteract(e: PlayerInteractEvent) {
         if (!e.hasItem()) return
         val user = User.getByUUID(e.player.uniqueId)
-        println(ItemNBT.getNBTTag(e.item, "turret"))
         if (ItemNBT.getNBTTag(e.item, "turret") == "sentry") {
             if (e.hasBlock()) Sentry(
                 e.clickedBlock.location.add(0.0, 1.0, 0.0),
@@ -52,10 +53,8 @@ class TurretListeners : Listener {
         if (ItemNBT.getNBTTag(e.item, "turret") == "manual gun") {
             if (e.hasBlock()) ManualFireTurret(
                 e.clickedBlock.location.add(0.0, 1.0, 0.0),
-                user.getArmy(),
                 uuid = UUID.randomUUID()
             )
-            else ManualFireTurret(e.player.location, user.getArmy(), uuid = UUID.randomUUID())
             e.item.amount -= 1
             return
         }
@@ -65,21 +64,37 @@ class TurretListeners : Listener {
     fun onBlockBreak(e: BlockBreakEvent) {
         if (Metadata.provideForBlock(e.block)[MetadataKeys.UNBREAKABLE].isPresent) {
             e.isCancelled = true
+            Turrets.allTurrets.stream().filter { it.location.x compare e.block.x && it.location.z compare  e.block.z }
+                .findAny()
+                .ifPresent {
+                    it.takeDamage(User.getByUUID(e.player.uniqueId))
+                }
         }
     }
 
     @EventHandler
     fun onBlockDamage(e: BlockDamageEvent) {
         if (Metadata.provideForBlock(e.block)[MetadataKeys.UNBREAKABLE].isPresent) {
-            e.isCancelled = true
             Turrets.allTurrets.stream().filter { it.location.x compare e.block.x && it.location.z compare  e.block.z }
                 .findAny()
                 .ifPresent {
-                    it.hp -= 5
-                    if (it.hp <= 0) {
-                        it.despawn()
-                    }
+                    it.takeDamage(User.getByUUID(e.player.uniqueId))
                 }
         }
     }
+
+    @EventHandler
+    fun onHitBlock(e: ProjectileHitEvent) {
+        if (e.hitBlock == null) return
+        if (Metadata.provideForBlock(e.hitBlock)[MetadataKeys.UNBREAKABLE].isPresent) {
+            Turrets.allTurrets.stream().filter { it.location.x compare e.hitBlock.x && it.location.z compare  e.hitBlock.z }
+                .findAny()
+                .ifPresent {
+                    if (e.entity.shooter is Player)
+                        it.takeDamage(User.getByUUID((e.entity.shooter as Player).uniqueId))
+                    else it.takeDamage(null)
+                }
+        }
+    }
+
 }

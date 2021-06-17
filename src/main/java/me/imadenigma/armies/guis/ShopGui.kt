@@ -70,15 +70,25 @@ class ShopGui(val user: User) {
                 }
                 user.withdraw(price)
                 if (nbt[0] == "turret") {
-                    if (nbt[1] == "gun") {
-                        getGunItem().give(user)
-                    }else if (nbt[1] == "manual-gun") {
-                        getManualGunItem().give(user)
-                    }else getSentryItem().give(user)
+                    when {
+                        nbt[1] == "gun" -> {
+                            getGunItem().give(user)
+                        }
+                        nbt[1] == "manual gun" -> {
+                            getManualGunItem().give(user)
+                        }
+                        else -> getSentryItem().give(user)
+                    }
                 }else if (nbt[0] == "upgrade") {
-                    if (nbt[1] == "gun") {
-                        getGunUpgradeItem().give(user)
-                    }else getSentryUpgradeItem().give(user)
+                    when {
+                        nbt[1] == "gun" -> {
+                            getGunUpgradeItem().give(user)
+                        }
+                        nbt[1] == "manual" -> {
+                            getManualUpgradeItem().give(user)
+                        }
+                        else -> getSentryUpgradeItem().give(user)
+                    }
                 }
                 val msg = this.conf.getNode("success").getString("n").replace("{0}", item.itemMeta.displayName)
                 user.msg(msg)

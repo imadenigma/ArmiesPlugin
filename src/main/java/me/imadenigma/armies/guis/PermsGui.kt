@@ -4,8 +4,8 @@ import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
-import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.colorize
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
 import me.mattstudios.mfgui.gui.components.ItemBuilder
@@ -32,7 +32,11 @@ class PermsGui(val user: User, val rank: Rank) {
         val material = config.getNode("item").getValue(TypeToken.of(Material::class.java)) ?: Material.MELON
         val name = config.getNode("name").getString(permission.name).colorize()
         this.gui.addItem(
-            ItemBuilder.from(material).glow(glow).setName(name).asGuiItem {
+            ItemBuilder.from(material)
+                .glow(glow)
+                .setName(name)
+                .setLore("&aRight click to add this permission to the rank".colorize(), "&cLeft click to remove this permission from the rank".colorize())
+                .asGuiItem {
                 it.isCancelled = true
                 if (it.isRightClick) {
                     this.user.getArmy().members.filter { it1 -> it1.rank == rank }.forEach { user1 -> user1.additionalPerms.add(permission); user1.deletedPerms.remove(permission) }

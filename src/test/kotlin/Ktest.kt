@@ -1,12 +1,8 @@
-import junit.framework.TestCase
+
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Rank
-import me.lucko.helper.config.yaml.YAMLConfigurationLoader
-import org.bukkit.Material
 import org.bukkit.entity.Player
-import org.jetbrains.annotations.TestOnly
 import org.junit.Test
-import java.io.File
 
 class Ktest {
 
@@ -44,5 +40,17 @@ class Ktest {
     fun `assert nature of lateinit var`() {
         assert(!::variable.isInitialized)
     }
+
+    @Test
+    fun `assert null safety`() {
+        val army: Army? = null
+        println(army?.uuid.toString())
+    }
+
+    @Test
+    fun `assert backsteps in for loop`() {
+        for (i in 100 downTo 0 step 10) println(i)
+    }
+
 
 }

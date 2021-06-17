@@ -20,13 +20,15 @@ import org.bukkit.SkullType
 import org.bukkit.block.Block
 import org.bukkit.block.BlockFace
 import org.bukkit.block.Skull
+import org.bukkit.boss.BossBar
 import java.util.*
+import kotlin.math.roundToInt
 
 
 abstract class Turrets(
     val name: String,
     open val location: Location,
-    open val army: Army,
+    open var army: Army?,
     open var ammo: Int,
     open var hp: Double,
     open var damage: Double,
@@ -34,6 +36,8 @@ abstract class Turrets(
     open var level: Int,
     open val uuid: UUID
 ) : GsonSerializable {
+
+    abstract val bossbar: BossBar
 
     abstract override fun serialize(): JsonElement
 
@@ -54,7 +58,8 @@ abstract class Turrets(
                 }
                 else -> upgrader.msg("&4there is no more levels, this turret's level is the max")
             }
-        } else if (this is FireballTurret) {
+        }
+        else if (this is FireballTurret) {
             when (this.level) {
                 0 -> {
                     this.damage += 3; this.distance = 16.0; this.level++; this.hp += 50
@@ -63,13 +68,17 @@ abstract class Turrets(
                     this.damage += 5; this.distance = 32.0; this.level++; this.hp += 50
                 }
                 2 -> {
-                    this.damage += 7; this.distance = 48.0; this.level++; this.hp += 150
+                    this.damage += 7; this.distance = 48.0; this.level++; this.hp += 100
                 }
                 else -> upgrader.msg("&4there is no more levels, this turret's level is the max")
             }
         }
+        else if (this is ManualFireTurret && this.level == 1) {
+            this.level++
+            this.hp += 50
+        }
         HologramBuilder.updateBlockName(
-            this.location.block.location.add(0.0, 2.0, 0.0).block,
+            this.location.block.location.add(0.0, 1.0, 0.0).block,
             this.name + " $level"
         )
     }
@@ -77,7 +86,7 @@ abstract class Turrets(
     fun serialise(type: String): JsonElement {
         this.despawn()
         val pos = Position.of(this.location)
-        val army = army.uuid.toString()
+        val army = this.army?.uuid.toString()
         val ammo = this.ammo
         return JsonBuilder.`object`()
             .add("position", pos)
@@ -110,23 +119,25 @@ abstract class Turrets(
         skullBlock.update()
     }
 
-    open fun yawToFace(yaw: Float, useSubCardinalDirections: Boolean): BlockFace? {
-        return if (useSubCardinalDirections) radial[Math.round(yaw / 45f) and 0x7].oppositeFace else axis[Math.round(yaw / 90f) and 0x3].oppositeFace
-    }
 
-    private val axis = arrayOf(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)
-    private val radial = arrayOf(
-        BlockFace.NORTH,
-        BlockFace.NORTH_EAST,
-        BlockFace.EAST,
-        BlockFace.SOUTH_EAST,
-        BlockFace.SOUTH,
-        BlockFace.SOUTH_WEST,
-        BlockFace.WEST,
-        BlockFace.NORTH_WEST
-    )
+
+    abstract fun takeDamage(user: User?)
+
+
 
     companion object {
+        private val axis = arrayOf(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)
+        private val radial = arrayOf(
+            BlockFace.NORTH,
+            BlockFace.NORTH_EAST,
+            BlockFace.EAST,
+            BlockFace.SOUTH_EAST,
+            BlockFace.SOUTH,
+            BlockFace.SOUTH_WEST,
+            BlockFace.WEST,
+            BlockFace.NORTH_WEST
+        )
+
         val allTurrets = mutableSetOf<Turrets>()
         fun deserialize(jsonElement: JsonElement) {
             val obj = jsonElement.asJsonObject
@@ -142,11 +153,13 @@ abstract class Turrets(
                 val distance = it["distance"].asDouble
                 when (type) {
                     "sentry" -> Sentry(location, army, ammo, level, hp, damage, distance, uuid)
-                    "manual-gun" -> ManualFireTurret(location, army, ammo, hp, damage, distance, level, uuid)
+                    "manual-gun" -> ManualFireTurret(location, ammo, level, uuid)
                     else -> FireballTurret(location, army, ammo, level, hp, damage, distance, uuid)
                 }
-
             }
+        }
+        fun yawToFace(yaw: Float, useSubCardinalDirections: Boolean): BlockFace {
+            return if (useSubCardinalDirections) radial[(yaw / 45f).roundToInt() and 0x7].oppositeFace else axis[(yaw / 90f).roundToInt() and 0x3].oppositeFace
         }
     }
 }

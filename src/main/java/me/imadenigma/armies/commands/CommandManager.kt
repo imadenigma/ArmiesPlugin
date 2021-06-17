@@ -25,6 +25,7 @@ class CommandManager {
         this.acf.registerCommand(MainCommands())
         this.acf.registerCommand(TreasuryCommands())
         this.acf.registerCommand(WarCommands())
+        this.acf.registerCommand(MapCommand())
     }
 
     private fun registerContexts() {

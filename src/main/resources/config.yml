@@ -1,5 +1,17 @@
 senty-upgrade-amount: 3 #amount of sentry upgrade items you need to upgrade
 gun-upgrade-amount: 3 #amount of gun turret upgrade items you need to upgrade
+invading-broadcast: "&9A new war is out there, {0} invaded {1}"
+
+
+menu-gui:
+  rows: 3
+  title: "&3Menu"
+
+top-army:
+  size: 5 #to display top 5 armies
+  title: "----------- Top Players -------------"
+  line: "&3{0} with a balance of &a{1}"
+
 
 
 shop:
@@ -56,13 +68,22 @@ shop:
         lore:
           - "first lore"
           - "second lore"
+      manual-gun-upgrade:
+        glow: true
+        name: "&3Manual Gun upgrade"
+        slot: 25
+        material: GOLD_AXE
+        nbt: "upgrade-manual gun"
+        lore:
+          - "first lore"
+          - "Second lore"
       gun-turret-upgrade:
         price: 1000.5
-        name: "&gun turret upgrade item"
+        name: "&3gun turret upgrade item"
         slot: 20
         material: DIAMOND_AXE
         glow: false
-        nbt: "upgrade-sentry"
+        nbt: "upgrade-gun"
         lore:
           - "first lore"
           - "second lore"

@@ -10,9 +10,11 @@ import me.lucko.helper.metadata.MetadataKey
 import me.mattstudios.mfgui.gui.components.ItemBuilder
 import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.ChatColor
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.inventory.ItemStack
 import java.util.*
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private lateinit var claimCard: ItemStack
@@ -21,7 +23,8 @@ private lateinit var gunItem: ItemStack
 private lateinit var sentryUpItem: ItemStack
 private lateinit var gunUpItem: ItemStack
 private lateinit var manualGun: ItemStack
-private lateinit var manualSentry: ItemStack
+private lateinit var manualUpgrade: ItemStack
+
 fun String.colorize(): String {
     return ChatColor.translateAlternateColorCodes('&', this)!!
 }
@@ -69,15 +72,16 @@ fun parseItem(node: ConfigurationNode): ItemStack {
 }
 
 
-infix fun Double.compare(number: Number) : Boolean {
-    return this.roundToInt() == number.toInt() || this.toString().split(".")[0] == number.toString().split(".")[0]
+infix fun Double.compare(number: Number): Boolean {
+    return this.roundToInt() == number.toInt() || this.toString().split(".")[0] == number.toString()
+        .split(".")[0] || abs(number.toDouble() - this)  < 1
 }
 
-   /*
-    *
-    * Turrets Stuff
-    *
-    */
+/*
+ *
+ * Turrets Stuff
+ *
+ */
 
 fun getSentryUpgradeItem(): ItemStack {
     if (::sentryUpItem.isInitialized) return sentryUpItem
@@ -87,7 +91,8 @@ fun getSentryUpgradeItem(): ItemStack {
 
 fun getGunUpgradeItem(): ItemStack {
     if (::gunUpItem.isInitialized) return gunUpItem
-    val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "gun-turret-upgrade")
+    val node =
+        Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "gun-turret-upgrade")
     return ItemNBT.setNBTTag(parseItem(node), "upgrade", "gun").also { gunUpItem = it }
 }
 
@@ -106,20 +111,21 @@ fun getGunItem(): ItemStack {
 fun getManualGunItem(): ItemStack {
     if (::manualGun.isInitialized) return manualGun
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "manual-gun")
-    return ItemNBT.setNBTTag(parseItem(node), "turret", "manual-gun").also { gunItem = it }
-
+    return ItemNBT.setNBTTag(parseItem(node), "turret", "manual gun").also { manualGun = it }
 }
 
+fun getManualUpgradeItem(): ItemStack {
+    if (::manualUpgrade.isInitialized) return manualUpgrade
+    val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "manual-upgrade")
+    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "manual").also { manualUpgrade = it }
+}
 
-
-
-
-
-
-
-
+fun Location.equalsO(location: Location): Boolean {
+    return this.x == location.x && this.y == location.y && this.z == location.z && this.world == location.world
+}
 
 object MetadataKeys {
+    val MANUAL_TURRET: MetadataKey<Boolean> = MetadataKey.createBooleanKey("manual")
     val SENTRY: MetadataKey<Boolean> = MetadataKey.createBooleanKey("sentry")
     val GUN: MetadataKey<Boolean> = MetadataKey.createBooleanKey("gun")
     val UNBREAKABLE: MetadataKey<Boolean> = MetadataKey.createBooleanKey("unbreakable")

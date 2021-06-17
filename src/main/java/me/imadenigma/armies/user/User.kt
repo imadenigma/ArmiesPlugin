@@ -18,15 +18,16 @@ import org.apache.commons.lang.StringUtils
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import java.util.*
-import kotlin.collections.HashSet
 
 class User(
     val uuid: UUID,
     var rank: Rank = Rank.NOTHING,
     val additionalPerms: MutableSet<Permissions> = mutableSetOf(),
-    val deletedPerms: MutableSet<Permissions> = mutableSetOf()
+    val deletedPerms: MutableSet<Permissions> = mutableSetOf(),
+    var armyChat: Boolean = false
 ) : GsonSerializable, Sender, ArmyEconomy {
-
+    var lastAgg = 0L
+    var isOutsideArea = false
     init {
         users.add(this)
         Log.info("registering a new user: ${this.uuid}")
@@ -45,11 +46,11 @@ class User(
     }
 
     fun isOnArmy(): Boolean {
-        return Army.armies.any { it.members.contains(this) }
+        return Army.armies.any { it.members.contains(this) } || Army.armies.any { it.prisoners.contains(this) }
     }
 
     fun getArmy(): Army {
-        return Army.armies.first { it.members.contains(this) }
+        return Army.armies.firstOrNull { it.members.contains(this) } ?: Army.armies.first { it.prisoners.contains(this) }
     }
 
     fun getPlayer(): Player? {
@@ -58,10 +59,11 @@ class User(
 
     override fun serialize(): JsonElement {
         return JsonBuilder.`object`()
-            .add("me.imadenigma.armies.weapons.impl.getUuid", this.uuid.toString())
+            .add("uuid", this.uuid.toString())
             .add("rank", this.rank.name)
             .add("additionalPerms", JsonBuilder.array().addStrings(additionalPerms.map { it.name }).build())
             .add("deletedPerms",JsonBuilder.array().addStrings(deletedPerms.map { it.name }).build())
+            .add("chat", this.armyChat)
             .build()
     }
 
@@ -70,18 +72,20 @@ class User(
         val strs = StringUtils.split(path, " ")
         var node = language!!
         for (str in strs) node = node.getNode(str)
-        player.sendMessage(node.getString("null").colorize())
+        val msg = node.getString("")
+        if (msg == "") return
+        player.sendMessage(msg.colorize())
     }
 
     override fun msgR(msg: String, vararg replacements: Any) {
         val player = Bukkit.getPlayer(this.uuid)
+        if (msg == "") return
         if (!msg.contains("{")) return
         for (i in replacements.indices) {
             msg.replace("{$i}", replacements[i].toString())
         }
         player.sendMessage(msg.colorize())
     }
-
 
     override fun msgCR(path: String, vararg replacements: Any) {
         val player = Bukkit.getPlayer(this.uuid)
@@ -92,11 +96,27 @@ class User(
         for (i in replacements.indices) {
             msg = StringUtils.replace(msg, "{$i}", replacements[i].toString())
         }
+        if (msg == "") return
         player.sendMessage(msg.colorize())
     }
 
     override fun msg(msg: String) {
         this.getPlayer()!!.sendMessage(msg.colorize())
+    }
+
+    override fun deposit(amount: Double) {
+        val econ = Services.load(Armies::class.java).econ
+        econ.depositPlayer(Players.getOffline(this.uuid).get(), amount)
+    }
+
+    override fun withdraw(amount: Double) {
+        val econ = Services.load(Armies::class.java).econ
+        econ.withdrawPlayer(Players.getOffline(this.uuid).get(), amount)
+    }
+
+    override fun getBalance(): Double {
+        val econ = Services.load(Armies::class.java).econ
+        return econ.getBalance(Players.getOffline(this.uuid).get())
     }
 
     companion object {
@@ -106,32 +126,19 @@ class User(
 
         fun deserialize(jsonElement: JsonElement): User {
             val obj = jsonElement.asJsonObject
-            val uuid = UUID.fromString(obj.get("me.imadenigma.armies.weapons.impl.getUuid").asString)
+            val uuid = UUID.fromString(obj.get("uuid").asString)
             val rank = Rank.valueOf(obj.get("rank").asString)
             val addiPerms =
                 obj.get("additionalPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()
             val delPerms = obj.get("deletedPerms").asJsonArray.map { Permissions.valueOf(it.asString) }.toMutableSet()
-            return User(uuid, rank, addiPerms, delPerms)
+            val chat = obj.get("chat").asBoolean
+            return User(uuid, rank, addiPerms, delPerms, chat)
         }
 
         fun getByUUID(uuid: UUID): User {
-            return this.users.firstOrNull { it.uuid.equals(uuid) } ?: User(uuid)
+            return this.users.firstOrNull { it.uuid == uuid } ?: User(uuid)
         }
 
     }
 
-    override fun deposit(amount: Double) {
-        val econ = Services.load(Armies::class.java).econ!!
-        econ.depositPlayer(Players.getOffline(this.uuid).get(), amount)
-    }
-
-    override fun withdraw(amount: Double) {
-        val econ = Services.load(Armies::class.java).econ!!
-        econ.withdrawPlayer(Players.getOffline(this.uuid).get(), amount)
-    }
-
-    override fun getBalance(): Double {
-        val econ = Services.load(Armies::class.java).econ!!
-        return econ.getBalance(Players.getOffline(this.uuid).get())
-    }
 }

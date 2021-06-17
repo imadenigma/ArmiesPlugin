@@ -14,8 +14,8 @@ commands:
     success: "&3You created an army successfully"
   sethome:
     not-in-army: "&4You don't belong to any army"
-    not-emperor: "&4You don't have permission to execute this command"
-    success: "&3the army's home now is your me.imadenigma.armies.weapons.impl.getLocation"
+    need-permission: "&4You don't have permission to execute this command"
+    success: "&3the army's home now is your location"
   home:
     not-in-army: "&4You don't belong to any army"
     need-permission: "&4You don't have permission to execute this command"
@@ -25,27 +25,24 @@ commands:
     not-in-army: "&4WTF you wanna leave an army that you arent in?!!!!"
     success: "&aYou left your army!!"
   join:
-    army-not-found: "The army you're looking found cannot be found"
-    already-in-army: "&4You are already in army and cannot join two armies in the same time"
     army-closed: "&4The army you are trying to join is closed"
     success: "&aYou joined the army successfully"
   enemy:
     not-in-army: "&4WTF you wanna enemy an army without being in one?!!!!"
-    not-emperor: "&4You arent the emperor"
-    success: "&aYou enemy the army"
+    need-permission: "&4You need permission to execute this command"
   promote:
     not-in-army: "&4WTF you wanna promote a member without being in an army!!!!"
     need-permission: "&cYou don't have permission to promote players"
-    user:
-      knight: "You can't be the emperor"
-      emperor: "You are already the emperor wtf lol"
-      success: "&aYou promoted yourself to the rank {1}"
-    target:
-      user-msg: "&aYou have been promoted by {0} to {1}"
-      knight: "You can't promote an knight cause there is already one"
-      emperor: "the target is already an emperor"
-      success: "&aYou promoted {0} to the rank {1}"
-
+    knight: "You can't promote an knight cause there is already one"
+    emperor: "the target is already an emperor"
+    success: "&aYou promoted {0} to the rank {1}"
+    user-msg: "&aYou have been promoted by {0} to {1}"
+  demote:
+    not-in-army: "You need to be in army"
+    need-permission: "&cYou don't have permission to demote players"
+    emperor: "&4You can't demote the emperor" # in case the emperor gave permission to the knights to demote
+    success: "&aYou demoted {0} to the rank {1}"
+    user-msg: "&cYou have been demoted by {0} to {1}"
   open:
     not-in-army: "&4You should belong to an army"
     need-permission: "&cYou don't have permission to open the army"
@@ -58,6 +55,8 @@ commands:
     not-in-army: "&4You should belong to an army"
     need-permission: "&cYou don't have permission to close the army"
   invite:
+    not-in-army: "&4You should belong to an army to execute this command"
+    need-permission: "&4You need permission to execute this command"
     same-army: "you are already in the same army"
     receiver-msg: "You received invitation by {0} to join his army {1}"
     sender-msg: "You sent {0} invitation"
@@ -71,3 +70,44 @@ commands:
     take:
       success: "you deposit {0} in your army's treasury successfully"
       need-permission: "you need permission to execute this command"
+  surrender:
+    need-permission: "&4You need permission to execute this command"
+    not-in-army: "&4You don't belong to an army"
+  invade:
+    not-in-army: "&4You should belong to an army"
+    need-permission: "&4You need permission to execute this command"
+  menu:
+    not-in-army: "You must belong to an army"
+    need-permission: "You need permission to execute this command"
+  coalition:
+    not-in-army: "You must belong to an army"
+    need-permission: "You need permission to execute this command"
+    sender: "You invited {0}, wait for the owner's reply"
+    receiver: "{0} has invited you for a coalition with his army {1}"
+  chat: #This contains both coalition and army chat
+    off: "You disabled the army chat"
+    on: "You enabled the army chat"
+    not-in-army: "You must belong to an army"
+    need-permission: "You need permission to execute this command"
+    coalition:
+      need-permission: "You need permission to execute this command"
+      on: "the coalition chat is activated now"
+      off: "the coalition chat is disabled now"
+  kick:
+    not-in-army: "You must belong to an army"
+    need-permission: "You need permission to execute this command"
+    success: "You kicked {0} out of the army"
+    user-msg: "You have been kicked out by {0}"
+
+army-msgs:
+  invade:
+    receiver: "&3Your army was invaded by {0}"
+    sender: "&3Your army invaded {0}"
+  enemy:
+    sender: "&3Your army enemy {0}"
+    receiver: "&3Your army was enemy by {0}"
+  surrender:
+    sender: "&3Your army surrended to {0}"
+    receiver: "&3The army {0} surrended to yours"
+  disband: "Your army was disbanded"
+  coalition: "Your army made a coalition with {0}"

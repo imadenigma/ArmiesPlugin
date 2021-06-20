@@ -98,7 +98,13 @@ commands:
     need-permission: "You need permission to execute this command"
     success: "You kicked {0} out of the army"
     user-msg: "You have been kicked out by {0}"
-
+  description:
+    not-in-army: "You must belong to an army"
+    need-permission: "You need permission to execute this command"
+    success: "Description updated successfully"
+  names:
+    header: "These are the armies on the server"
+    format: "&4{0} ---> &3{1}/{2}"
 army-msgs:
   invade:
     receiver: "&3Your army was invaded by {0}"

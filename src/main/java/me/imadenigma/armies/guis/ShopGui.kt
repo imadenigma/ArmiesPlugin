@@ -31,19 +31,32 @@ class ShopGui(val user: User) {
     private fun addItems() {
         val products = this.conf.getNode("products")
         val node = products.getNode("claim-card")
-        val price = node.getNode("price").getDouble(100.0)
+        val price = node.getNode("price").getDouble(100.0) * user.getArmy().cardCount
         val slot = node.getNode("slot").getInt(0)
         val item = parseItem(node)
+        val lore = node.getNode("lore").getList { it.toString().replace("{0}", price.toString()).colorize() }
+        val method = node.getNode("payment-method").getString("army")
+        item.itemMeta.lore.clear()
         items[slot] = ItemBuilder.from(item)
+            .setLore(lore)
             .asGuiItem {
                 it.isCancelled = true
-                if (user.getBalance() < price) {
-                    val msg = this.conf.getNode("money-not-enough").getString("n").replace("{0}", item.itemMeta.displayName)
-                    user.msg(msg)
-                    return@asGuiItem
-                }
+                if (method.equals("user", true)) {
+                    if (user.getBalance() < price) {
+                        val msg = this.conf.getNode("money-not-enough").getString("n").replace("{0}", item.itemMeta.displayName)
+                        user.msg(msg)
+                        return@asGuiItem
+                    }
 
-                user.withdraw(price)
+                    user.withdraw(price)
+                }else {
+                    if (user.getArmy().getBalance() < price) {
+                        val msg = this.conf.getNode("money-not-enough").getString("n").replace("{0}", item.itemMeta.displayName)
+                        user.msg(msg)
+                        return@asGuiItem
+                    }
+                    user.getArmy().withdraw(price)
+                }
                 getClaimCard().give(user)
                 val msg = products.parent!!.getNode("success").getString("n").replace("{0}", item.itemMeta.displayName)
                 user.msg(msg)
@@ -71,23 +84,17 @@ class ShopGui(val user: User) {
                 user.withdraw(price)
                 if (nbt[0] == "turret") {
                     when {
-                        nbt[1] == "gun" -> {
-                            getGunItem().give(user)
-                        }
-                        nbt[1] == "manual gun" -> {
-                            getManualGunItem().give(user)
-                        }
+                        nbt[1] == "gun" -> getGunItem().give(user)
+                        nbt[1] == "manual gun" -> getManualGunItem().give(user)
                         else -> getSentryItem().give(user)
                     }
                 }else if (nbt[0] == "upgrade") {
+                    println(nbt[1])
+                    println(getManualUpgradeItem())
                     when {
-                        nbt[1] == "gun" -> {
-                            getGunUpgradeItem().give(user)
-                        }
-                        nbt[1] == "manual" -> {
-                            getManualUpgradeItem().give(user)
-                        }
-                        else -> getSentryUpgradeItem().give(user)
+                        nbt[1] == "gun" -> getGunUpgradeItem().give(user)
+                        nbt[1] == "sentry" -> getSentryUpgradeItem().give(user)
+                        else -> getManualUpgradeItem().give(user)
                     }
                 }
                 val msg = this.conf.getNode("success").getString("n").replace("{0}", item.itemMeta.displayName)

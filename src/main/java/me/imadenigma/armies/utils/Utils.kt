@@ -14,8 +14,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.inventory.ItemStack
 import java.util.*
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import kotlin.math.*
 
 private lateinit var claimCard: ItemStack
 private lateinit var sentryItem: ItemStack
@@ -33,6 +32,12 @@ fun JsonElement.asUUID(): UUID {
     return UUID.fromString(this.asString)
 }
 
+fun yawBetweenTwoPoints(target: Location, origin: Location) : Double {
+    val xDiff = target.x - origin.x
+    val zDiff = target.z - origin.z
+    val distance = sqrt(xDiff * xDiff + zDiff * zDiff)
+    return (acos(xDiff / distance) * 180 / PI) - 90
+}
 
 fun getClaimCard(): ItemStack {
     if (::claimCard.isInitialized) return claimCard

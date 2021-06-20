@@ -3,6 +3,9 @@ import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Rank
 import org.bukkit.entity.Player
 import org.junit.Test
+import kotlin.math.PI
+import kotlin.math.acos
+import kotlin.math.sqrt
 
 class Ktest {
 
@@ -50,6 +53,22 @@ class Ktest {
     @Test
     fun `assert backsteps in for loop`() {
         for (i in 100 downTo 0 step 10) println(i)
+    }
+
+    @Test
+    fun `assert get yaw is working`() {
+        val target = object {
+            val x = 10.4
+            val z = 10.5
+        }
+        val origin = object {
+            val x = 400.5
+            val z = 194.4
+        }
+        val xDiff = target.x - origin.x
+        val zDiff = target.z - origin.z
+        val distance = sqrt(xDiff * xDiff + zDiff * zDiff)
+        println(acos(xDiff / distance) * 180 / PI)
     }
 
 

@@ -8,6 +8,7 @@ import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.*
 import me.imadenigma.armies.weapons.Turrets
 import me.imadenigma.armies.weapons.impl.FireballTurret
+import me.imadenigma.armies.weapons.impl.ManualFireTurret
 import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
 import me.mattstudios.mfgui.gui.components.ItemNBT
@@ -54,15 +55,13 @@ class PlayerListeners : Listener {
     fun onBlockBreak(e: BlockBreakEvent) {
         val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: return
         val user = User.getByUUID(e.player.uniqueId)
+        e.isCancelled = true
+        if (!user.isOnArmy()) return
         when {
-            !user.isOnArmy() -> e.isCancelled = true
-
-            user.getArmy() == army && (e.block == army.core || !user.hasPermission(Permissions.BREAK)) -> e.isCancelled = true
-
             e.block == army.core && user.getArmy() != army && (user.rank == Rank.EMPEROR || user.rank == Rank.KNIGHT || user.rank == Rank.SOLDIER) -> {
                 army.takeDamage(user)
-                e.isCancelled = true
             }
+            user.getArmy() == army && user.hasPermission(Permissions.BREAK) && e.block != army.core -> e.isCancelled = false
         }
     }
 
@@ -86,16 +85,21 @@ class PlayerListeners : Listener {
     @EventHandler
     fun onDamageBlock(e: BlockDamageEvent) {
         val turret = Turrets.allTurrets.firstOrNull { it.location.x compare e.block.x && it.location.z compare e.block.z }
+        val user = User.getByUUID(e.player.uniqueId)
         if (turret != null) {
-            turret.hp -= 5
+            turret.takeDamage(user)
             if (turret.hp <= 0) turret.despawn()
         }
         if (e.block.type != Material.BEACON) return
-        val army = Army.armies.firstOrNull { it.core.location.equals(e.block.location) } ?: return
-        val user = User.getByUUID(e.player.uniqueId)
-        if (!user.isOnArmy()) { e.isCancelled = true; return }
-        if (user.getArmy() == army) { e.isCancelled = true; return }
-        army.takeDamage(user)
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: return
+        e.isCancelled = true
+        if (!user.isOnArmy()) return
+        when {
+            e.block == army.core && user.getArmy() != army && (user.rank == Rank.EMPEROR || user.rank == Rank.KNIGHT || user.rank == Rank.SOLDIER) -> {
+                army.takeDamage(user)
+            }
+            user.getArmy() == army && user.hasPermission(Permissions.BREAK) && e.block != army.core -> e.isCancelled = false
+        }
     }
 
     @EventHandler
@@ -127,6 +131,12 @@ class PlayerListeners : Listener {
                     itemInHand.amount--
                 }
             }
+            getManualUpgradeItem().type -> {
+                if (turret.get() is ManualFireTurret) {
+                    turret.get().upgrade(user)
+                    itemInHand.amount--
+                }
+            }
             else -> return
         }
     }
@@ -143,7 +153,7 @@ class PlayerListeners : Listener {
         val user = User.getByUUID(e.player.uniqueId)
         val army = Army.getByLocation(e.player.location.x, e.player.location.z)
         if (army != null && user.isOutsideArea) {
-            e.player.sendTitle("&3&l${army.name}".colorize(), "", 10, 70, 20)
+            e.player.sendTitle("&3&l${army.name}".colorize(), army.description, 10, 70, 20)
             user.isOutsideArea = false
         }else if (army == null && !user.isOutsideArea)  {
             e.player.sendTitle("&a&lWilderness".colorize(), "&lIt's dangerous out here!".colorize(), 10, 70, 20)

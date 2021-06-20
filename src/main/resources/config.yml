@@ -13,7 +13,6 @@ top-army:
   line: "&3{0} with a balance of &a{1}"
 
 
-
 shop:
   gui-rows: 3
   gui-title: "&aGuiTitle"
@@ -26,6 +25,7 @@ shop:
       slot: 10
       material: PAPER
       glow: true
+      payment-method: "army" # YOU CAN DO army or user and anything else gonna be army
       lore:
         - "first lore"
         - "second lore"

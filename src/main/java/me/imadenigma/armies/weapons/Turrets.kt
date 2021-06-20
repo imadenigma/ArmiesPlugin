@@ -4,6 +4,7 @@ import com.google.gson.JsonElement
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.exceptions.ArmyNotFoundException
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.HologramBuilder
 import me.imadenigma.armies.utils.asUUID
@@ -143,7 +144,11 @@ abstract class Turrets(
             val obj = jsonElement.asJsonObject
             obj.let {
                 val location = Position.deserialize(it["position"]).toLocation()
-                val army = Army.getByUUID(it["army"].asUUID())
+                val army = try {
+                    Army.getByUUID(it["army"].asUUID())
+                }catch (e: ArmyNotFoundException) {
+                    null
+                } catch (e: IllegalArgumentException) { null }
                 val uuid = it["uuid"].asUUID()
                 val ammo = it["ammo"].asInt
                 val type = it["type"].asString
@@ -151,11 +156,13 @@ abstract class Turrets(
                 val damage = it["damage"].asDouble
                 val hp = it["hp"].asDouble
                 val distance = it["distance"].asDouble
-                when (type) {
+                 when (type) {
                     "sentry" -> Sentry(location, army, ammo, level, hp, damage, distance, uuid)
                     "manual-gun" -> ManualFireTurret(location, ammo, level, uuid)
                     else -> FireballTurret(location, army, ammo, level, hp, damage, distance, uuid)
                 }
+
+
             }
         }
         fun yawToFace(yaw: Float, useSubCardinalDirections: Boolean): BlockFace {

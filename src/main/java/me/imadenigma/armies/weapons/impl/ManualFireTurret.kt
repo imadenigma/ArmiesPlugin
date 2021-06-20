@@ -27,7 +27,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
-import org.bukkit.util.Vector
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -129,9 +128,9 @@ class ManualFireTurret(
                 12F
             ).also { Metadata.provideForEntity(it).put(MetadataKeys.MANUAL_TURRET, true) }
         } else {
-            this.location.world.spawn(this.skull.getRelative(yawToFace(player.location.yaw, true)).location, Fireball::class.java) {
+            this.location.world.spawn(this.skull.getRelative(yawToFace(player.location.yaw, true)).location.clone().add(0.0, 0.5, 0.0), Fireball::class.java) {
                 Metadata.provideForEntity(it).put(MetadataKeys.MANUAL_TURRET, true)
-                it.direction = player.eyeLocation.direction.add(Vector(0, 1, 0))
+                it.direction = player.eyeLocation.add(0.0,1.5,0.0).direction
                 it.yield = when (level) {
                     1 -> 6F
                     2 -> 8F
@@ -199,13 +198,12 @@ class ManualFireTurret(
             user!!.lastAgg = System.currentTimeMillis()
             if (!this.bossbar.players.contains(user.getPlayer()!!)) this.bossbar.addPlayer(user.getPlayer()!!)
             maxHP = when (this.level) {
-                0 -> 50
+                1 -> 50
                 else -> 100
             }
-            this.bossbar.progress = (((this.hp * 100) / maxHP) / 100)
+            this.bossbar.setProgress((((this.hp * 100) / maxHP) / 100))
             this.bossbar.isVisible = (true)
-            Schedulers.sync().runLater(
-                {
+            Schedulers.sync().runLater({
                     if ((System.currentTimeMillis() - user.lastAgg) / 1000 >= 4 && this.bossbar.players.contains(user.getPlayer()!!))
                         this.bossbar.removePlayer(user.getPlayer()!!)
                 }, 5L, TimeUnit.SECONDS)

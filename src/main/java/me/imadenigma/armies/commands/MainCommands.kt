@@ -4,7 +4,6 @@ package me.imadenigma.armies.commands
 
 import co.aikar.commands.BaseCommand
 import co.aikar.commands.annotation.*
-import com.google.common.base.Preconditions
 import com.google.common.reflect.TypeToken
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
@@ -20,6 +19,7 @@ import me.lucko.helper.utils.Players
 import net.md_5.bungee.api.ChatColor
 import net.md_5.bungee.api.chat.ClickEvent
 import net.md_5.bungee.api.chat.TextComponent
+import org.apache.commons.lang.StringUtils
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import java.util.*
@@ -30,13 +30,28 @@ class MainCommands : BaseCommand() {
     @Subcommand("create")
     @Syntax("<name>")
     fun create(user: User, name: String) {
-        Preconditions.checkNotNull(name)
         if (user.isOnArmy()) {
             user.msgC("commands create already-in-army")
             return
         }
-        if (Army.armies.any { it.name.contains(name) || name.contains(it.name) }) {
+        if (name == " ") {
+            user.msg("&4Name not valid")
+            return
+        }
+        if (Army.armies.any { it.name.equals(name, true) || StringUtils.remove(it.name, ' ').equals(StringUtils.remove(name, ' ')) }) {
             user.msg("&4Name taken")
+            return
+        }
+        if (Army.getByLocation(user.getPlayer()!!.location.x, user.getPlayer()!!.location.z) != null ||
+            Army.armies.any { it.lands.any { land ->
+                for (x in (user.getPlayer()!!.location.x - 16).toInt()..((user.getPlayer()!!.location.x + 16).toInt())) {
+                    for (z in (user.getPlayer()!!.location.z - 16).toInt()..((user.getPlayer()!!.location.z + 16).toInt()))  {
+                        if (Army.getByLocation(x.toDouble(), z.toDouble())  != null) return@any true
+                    }
+                }
+                false
+            } }) {
+            user.msg("&4You can't create an army in a claimed area !")
             return
         }
         success(user, "create")
@@ -141,7 +156,27 @@ class MainCommands : BaseCommand() {
     @Subcommand("names")
     @Description("names of all armies")
     fun names(user: User) {
-        Army.armies.forEach { user.msg("&a${it.name}") }
+        user.msgC("commands names header")
+        for (army in Army.armies) {
+            val name = army.name
+            val onlinePlayers = army.members.stream().filter { it.getPlayer() != null }
+                .mapToInt { 1 }
+                .sum() + army.prisoners.stream().filter { it.getPlayer() != null }
+                .mapToInt { 1 }
+                .sum()
+            val total = army.members.size + army.prisoners.size
+            user.msgCR("commands names format", name, onlinePlayers, total)
+        }
+    }
+
+    @Subcommand("description")
+    @Syntax("<description>")
+    @Description("set the description of the army")
+    fun description(user: User, description: String) {
+        if (!checkExistence(user, "description")) return
+        if (!hasPermission(user, Permissions.DESCRIPTION, "description")) return
+        success(user, "description")
+        user.getArmy().description = description
     }
 
     @Subcommand("invite")

@@ -27,6 +27,7 @@ class User(
     var armyChat: Boolean = false
 ) : GsonSerializable, Sender, ArmyEconomy {
     var lastAgg = 0L
+    var lastCoreAttack = 0L
     var isOutsideArea = false
     init {
         users.add(this)

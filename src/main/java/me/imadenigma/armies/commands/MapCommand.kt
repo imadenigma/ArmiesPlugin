@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.Default
 import co.aikar.commands.annotation.Subcommand
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.user.User
+import me.imadenigma.armies.utils.colorize
 import me.imadenigma.armies.utils.compare
 import me.imadenigma.armies.weapons.Turrets
 import org.bukkit.block.BlockFace
@@ -17,14 +18,13 @@ class MapCommand : BaseCommand() {
 
     @Default
     fun default(user: User) {
-        if (!MainCommands.checkExistence(user, "map")) return
         val player = user.getPlayer()!!
         val strBuilder = mutableListOf<String>()
-        val signs = arrayOf("x", "/", "|", "\\", "*", "=", "``", "0", "1", "2", "3", "4", "5", "6", "7", "8" ,"9")
+        val signs = arrayOf("x", "/", "0", "\\", "*", "=", "O", "Z", "1", "2", "3", "4", "5", "6", "7", "8" ,"9")
         val face = Turrets.yawToFace(player.location.yaw, false)
         val map = mutableMapOf<Army, Char>()
-        player.sendMessage("&8&l&m======================= <&r&3Map&8&l&m> &l&m=======================")
-        player.sendMessage("&7&lFacing: &r&3${face.name.toLowerCase()}")
+        player.sendMessage("&8&l&m=================== <&r&3Map&8&l&m> &l&m====================".colorize())
+        player.sendMessage("&7&lFacing: &r&3${face.name.toLowerCase()}".colorize())
         if (face == BlockFace.NORTH) {
             val minX = (player.location.x - 25 * 16).toInt()
             val maxX = (player.location.x + 25 * 16).toInt()
@@ -41,7 +41,7 @@ class MapCommand : BaseCommand() {
                     if (army == null) line.append("&8-")
                     else {
                         val c = signs[map.size]
-                        line.append(c)
+                        line.append("&3$c")
                         map.put(army, c.toCharArray()[0])
                     }
                 }

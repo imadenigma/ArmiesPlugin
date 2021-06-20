@@ -6,6 +6,7 @@ import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.HologramBuilder
 import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.utils.colorize
+import me.imadenigma.armies.utils.yawBetweenTwoPoints
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Events
 import me.lucko.helper.Schedulers
@@ -14,6 +15,7 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.block.Skull
 import org.bukkit.boss.BarColor
 import org.bukkit.boss.BarStyle
 import org.bukkit.boss.BossBar
@@ -26,7 +28,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 class FireballTurret(
-    override val location: Location,
+    override var location: Location,
     override var army: Army?,
     override var ammo: Int = 100,
     override var level: Int = 0,
@@ -42,6 +44,7 @@ class FireballTurret(
     override lateinit var bossbar: BossBar
 
     init {
+        this.location = Location(location.world, location.getBlockX().toDouble(), location.getBlockY().toDouble(), location.getBlockZ().toDouble())
         this.bossbar = Bukkit.createBossBar("&3Turret HP".colorize(), BarColor.RED, BarStyle.SEGMENTED_10)
         if (this.spawn()) {
             allTurrets.add(this)
@@ -51,7 +54,7 @@ class FireballTurret(
                     if (this.hp <= 0.0 || !this.isWorking) {
                         this.despawn()
                         task.close()
-                    }
+                    }else this.function()
                 }
             }, 2L, 7L)
             Schedulers.async().runRepeating({ _ -> this.isEnabled = true }, 40L, 40L)
@@ -65,7 +68,7 @@ class FireballTurret(
 
     override fun spawn(): Boolean {
         val block = this.location.block
-        if (block.type != Material.AIR) {
+        if (block.type != Material.AIR && block.type != Material.OBSIDIAN) {
             this.location.add(1.0, 0.0, 0.0)
             return spawn()
         }
@@ -108,22 +111,30 @@ class FireballTurret(
     }
 
     override fun function() {
-        if (!isEnabled || !isWorking)
+        if (!isEnabled || !isWorking) {
             return
+        }
         if (this.ammo <= 0) return
         val entity = this.location.world
             .getNearbyEntities(this.location, this.distance, this.distance, this.distance)
-            .filterIsInstance(Player::class.java).firstOrNull {
-                val user = User.getByUUID(it.uniqueId)
-                if (!user.isOnArmy()) true
-                else user.getArmy() != this.army && !this.army!!.allies.contains(user.getArmy())
-            } ?: return
+            .asSequence()
+            .filterIsInstance(Player::class.java)
+            .map { User.getByUUID(it.uniqueId) }
+            .filter {
+                if (!it.isOnArmy()) true
+                else it.getArmy() != army
+            }.map { it.getPlayer()!! }.firstOrNull() ?: run {
+                return
+            }
         this.ammo--
         val p1 = entity.location.subtract(0.0, 1.0, 0.0).toVector()
-        val loc = this.location.clone().add(0.0, 2.0, 0.0)
+        val loc = this.location.clone().add(0.0, 2.5, 0.0)
         val p2 = this.location.toVector()
         val vec = p1.clone().subtract(p2)
         this.isEnabled = false
+        val head = this.block2.state as Skull
+        head.rotation = yawToFace(yawBetweenTwoPoints(entity.location, loc).toFloat(), true)
+        head.update(true)
         this.location.world.spawn(loc, Fireball::class.java) {
             Metadata.provideForEntity(it).put(MetadataKeys.GUN, true)
             it.direction = vec.multiply(3)
@@ -138,6 +149,7 @@ class FireballTurret(
     override fun takeDamage(user: User?) {
         val maxHP: Int
         val bool = user != null
+        this.hp -= 5
         if (bool) {
             user!!.lastAgg = System.currentTimeMillis()
             if (!this.bossbar.players.contains(user.getPlayer()!!)) this.bossbar.addPlayer(user.getPlayer()!!)
@@ -155,7 +167,6 @@ class FireballTurret(
                         this.bossbar.removePlayer(user.getPlayer()!!)
                 }, 5L, TimeUnit.SECONDS)
         }
-        this.hp -= 5
         if (this.hp <= 0) {
             if (bool)
                 this.bossbar.removePlayer(user!!.getPlayer()!!)

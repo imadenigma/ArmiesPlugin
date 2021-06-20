@@ -12,6 +12,10 @@ import me.imadenigma.armies.utils.colorize
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Helper
 import me.lucko.helper.Services
+import me.lucko.helper.bossbar.BossBar
+import me.lucko.helper.bossbar.BossBarColor
+import me.lucko.helper.bossbar.BossBarStyle
+import me.lucko.helper.bossbar.BukkitBossBarFactory
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.BlockPosition
@@ -39,16 +43,39 @@ class Army(
     val allies: MutableSet<Army> = mutableSetOf(),
     val prisoners: MutableSet<User> = mutableSetOf(),
     val invades: MutableSet<Invade> = mutableSetOf(),
-    var chatType: Char = 'a',  //either a or c; a = army, c = coalition
+    var chatType: Char = 'a',  //either a or c; a = army, c = coalition,
+    var description: String = "Default Army description :(",
+    var cardCount: Int = 1,
 ) : GsonSerializable, ArmyEconomy, Sender {
     var enemUUID = setOf<UUID>()
     var alliesUUID = setOf<UUID>()
+    val attackersBB: BossBar
+    val defendersBB: BossBar
 
     init {
         armies.add(this)
-        val minLoc = this.core.location.subtract(8.0, 100.0, 8.0)
-        val maxLoc = this.core.location.add(8.0, 100.0, 8.0)
+        val minLoc = this.core.location.subtract(16.0, 1000.0, 16.0)
+        val maxLoc = this.core.location.add(16.0, 1000.0, 16.0)
         lands.add(Region.of(Position.of(minLoc), Position.of(maxLoc)))
+        this.attackersBB = BukkitBossBarFactory(Helper.server()).newBossBar()
+        this.defendersBB = BukkitBossBarFactory(Helper.server()).newBossBar()
+        with(this.attackersBB) {
+            progress(1.0)
+            color(BossBarColor.RED)
+            style(BossBarStyle.SEGMENTED_10)
+            title("&3The enemy's Core HP".colorize())
+            visible(true)
+        }
+
+        with(this.defendersBB) {
+            progress(1.0)
+            color(BossBarColor.RED)
+            style(BossBarStyle.SEGMENTED_10)
+            title("&3Your Core's HP".colorize())
+            visible(true)
+        }
+
+
     }
 
     fun claimArea(center: Location) {
@@ -68,6 +95,8 @@ class Army(
 
     fun kickMember(user: User) {
         this.members.remove(user)
+        if (user.getPlayer() != null)
+            armies.filter { it.invades.isNotEmpty() }.forEach { it.attackersBB.removePlayer(user.getPlayer()!!); it.defendersBB.removePlayer(user.getPlayer()!!) }
         /*ser.rank = Rank.NOTHING
         user.armyChat = false
         if (this.members.size == 0) {
@@ -87,12 +116,18 @@ class Army(
                 val msg = Services.load(Configuration::class.java).config.getNode("invading-broadcast").getString("")
                 Helper.server()
                     .broadcastMessage(msg.colorize().replace("{0}", damager.getArmy().name).replace("{1}", this.name))
+                this.attackersBB.addPlayers(damager.getArmy().members.mapNotNull { it.getPlayer() })
+                this.defendersBB.addPlayers(this.members.mapNotNull { it.getPlayer() })
             } else return
         }
         this.hp -= 5
+        val progress = ((this.hp * 100).toDouble() / 250) / 100
+        this.attackersBB.progress(progress)
         if (this.hp <= 0) {
             damager.getPlayer()!!.server.broadcastMessage("&aThe army &c${damager.getArmy().name} &awon the war against &c${this.name}".colorize())
         } else return
+        this.defendersBB.visible(false)
+        this.attackersBB.visible(false)
         this.core.type = Material.AIR
         this.core.state.update()
         if (damager.isOnArmy()) {
@@ -173,6 +208,8 @@ class Army(
             .add("allies", alli.build())
             .add("chattype", this.chatType)
             .add("invades", invades.build())
+            .add("description", this.description)
+            .add("cardCount", this.cardCount)
             .add(
                 "prisoners",
                 JsonBuilder.array().addAll(this.prisoners.map { JsonBuilder.primitiveNonNull(it.uuid.toString()) })
@@ -197,70 +234,6 @@ class Army(
 
     override fun getBalance(): Double {
         return this.treasury
-    }
-
-    companion object {
-
-        val armies = mutableSetOf<Army>()
-
-        fun deserialize(jsonElement: JsonElement): Army {
-            val obj = jsonElement.asJsonObject
-            val uuid = UUID.fromString(obj.get("uuid").asString)
-            val name = obj.get("name").asString
-            val owner = UUID.fromString(obj.get("owner").asString)
-            val members = obj.get("members").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
-            val turrets = obj.get("turrets").asJsonArray.map { it.asUUID() }.toMutableSet()
-            val isOpened = obj.get("isOpened").asBoolean
-            val core = BlockPosition.deserialize(obj.get("core")).toBlock()
-            val home = Position.deserialize(obj.get("home")).toLocation()
-            val areas = obj.get("areas").asJsonArray.map { Region.deserialize(it) }.toMutableSet()
-            val treasury = obj.get("treasury").asDouble
-            val enemies = obj.get("enemies").asJsonArray.map { it.asUUID() }.toMutableSet()
-            val allies = obj.get("allies").asJsonArray.map { it.asUUID() }.toMutableSet()
-            val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
-            val chatType = obj.get("chattype").asCharacter
-            val invades = obj["invades"].asJsonArray.map {
-                val str = it.asString
-                val words = str.split("??")
-                var attacker: UUID? = null
-                var defender: UUID? = null
-                kotlin.runCatching {
-                    attacker = UUID.fromString(words[0])
-                    defender = UUID.fromString(words[1])
-                }
-                return@map Invade(attacker!!, defender!!)
-            }.toMutableSet()
-            val hp = obj.get("hp").asInt
-            val army =
-                Army(
-                    uuid,
-                    name,
-                    owner,
-                    members,
-                    turrets,
-                    isOpened,
-                    core,
-                    home,
-                    areas,
-                    treasury,
-                    hp,
-                    prisoners = prisoners,
-                    invades = invades,
-                    chatType = chatType
-                )
-            army.enemUUID = enemies
-            army.alliesUUID = allies
-            return army
-        }
-
-        fun getByUUID(uuid: UUID): Army {
-            return this.armies.stream().filter { it.uuid == uuid }.findAny()
-                .orElseThrow { ArmyNotFoundException(uuid.toString()) }
-        }
-
-        fun getByLocation(x: Double, z: Double): Army? {
-            return armies.firstOrNull { it.lands.any { land -> land.inRegion(Position.of(x, 0.0, z,land.min.world)) } }
-        }
     }
 
     override fun msgC(path: String) {
@@ -293,6 +266,74 @@ class Army(
         }
         for (player in this.members.mapNotNull { it.getPlayer() }) {
             player.sendMessage(msg.colorize())
+        }
+    }
+
+    companion object {
+
+        val armies = mutableSetOf<Army>()
+
+        fun deserialize(jsonElement: JsonElement): Army {
+            val obj = jsonElement.asJsonObject
+            val uuid = UUID.fromString(obj.get("uuid").asString)
+            val name = obj.get("name").asString
+            val owner = UUID.fromString(obj.get("owner").asString)
+            val members = obj.get("members").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
+            val turrets = obj.get("turrets").asJsonArray.map { it.asUUID() }.toMutableSet()
+            val isOpened = obj.get("isOpened").asBoolean
+            val core = BlockPosition.deserialize(obj.get("core")).toBlock()
+            val home = Position.deserialize(obj.get("home")).toLocation()
+            val areas = obj.get("areas").asJsonArray.map { Region.deserialize(it) }.toMutableSet()
+            val treasury = obj.get("treasury").asDouble
+            val enemies = obj.get("enemies").asJsonArray.map { it.asUUID() }.toMutableSet()
+            val allies = obj.get("allies").asJsonArray.map { it.asUUID() }.toMutableSet()
+            val prisoners = obj.get("prisoners").asJsonArray.map { User.getByUUID(it.asUUID()) }.toMutableSet()
+            val chatType = obj.get("chattype").asCharacter
+            val description = obj.get("description").asString
+            val cardCount = obj.get("cardCount").asInt
+            val invades = obj["invades"].asJsonArray.map {
+                val str = it.asString
+                val words = str.split("??")
+                var attacker: UUID? = null
+                var defender: UUID? = null
+                kotlin.runCatching {
+                    attacker = UUID.fromString(words[0])
+                    defender = UUID.fromString(words[1])
+                }
+                Invade(attacker!!, defender!!)
+            }.toMutableSet()
+            val hp = obj.get("hp").asInt
+            val army =
+                Army(
+                    uuid,
+                    name,
+                    owner,
+                    members,
+                    turrets,
+                    isOpened,
+                    core,
+                    home,
+                    areas,
+                    treasury,
+                    hp,
+                    prisoners = prisoners,
+                    invades = invades,
+                    chatType = chatType,
+                    description = description,
+                    cardCount = cardCount
+                )
+            army.enemUUID = enemies
+            army.alliesUUID = allies
+            return army
+        }
+
+        fun getByUUID(uuid: UUID): Army {
+            return this.armies.stream().filter { it.uuid == uuid }.findAny()
+                .orElseThrow { ArmyNotFoundException(uuid.toString()) }
+        }
+
+        fun getByLocation(x: Double, z: Double): Army? {
+            return armies.firstOrNull { it.lands.any { land -> land.inRegion(Position.of(x, 0.0, z, land.min.world)) } }
         }
     }
 

@@ -1,10 +1,9 @@
 package me.imadenigma.armies.user
 
-import me.imadenigma.armies.army.Army
-import me.imadenigma.armies.utils.*
+import com.google.gson.JsonArray
+import me.imadenigma.armies.utils.colorize
 import me.lucko.helper.Helper
 import me.lucko.helper.gson.GsonProvider
-import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.utils.Log
 import java.io.FileReader
 import java.io.FileWriter
@@ -27,12 +26,12 @@ class UserManager {
         Log.info("&aSaving users from cache...".colorize())
         val ms = measureTimeMillis {
             val file = Helper.hostPlugin().getBundledFile("users.json")
-            val jsonArray = JsonBuilder.array()
+            val jsonArray = JsonArray()
             for (user in User.users) {
-                jsonArray.add(user)
+                jsonArray.add(user.serialize())
             }
             val writer = FileWriter(file)
-            GsonProvider.writeElementPretty(writer, jsonArray.build())
+            GsonProvider.writeElementPretty(writer, jsonArray)
             writer.close()
         }
         Log.info("&3Saving took &c$ms &3ms".colorize())

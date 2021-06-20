@@ -24,5 +24,6 @@ enum class Permissions {
     SHOP,
     DEPOSIT_BALANCE,
     DEMOTE,
-    KICK
+    KICK,
+    DESCRIPTION
 }

@@ -1,6 +1,7 @@
 package me.imadenigma.armies.weapons.impl
 
 import com.google.gson.JsonElement
+import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.HologramBuilder
 import me.imadenigma.armies.utils.MetadataKeys
@@ -21,6 +22,7 @@ import org.bukkit.boss.BossBar
 import org.bukkit.entity.Arrow
 import org.bukkit.entity.Fireball
 import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.Action
 import org.bukkit.event.entity.EntityDamageByEntityEvent
@@ -130,6 +132,7 @@ class ManualFireTurret(
         } else {
             this.location.world.spawn(this.skull.getRelative(yawToFace(player.location.yaw, true)).location.clone().add(0.0, 0.5, 0.0), Fireball::class.java) {
                 Metadata.provideForEntity(it).put(MetadataKeys.MANUAL_TURRET, true)
+                it.shooter = player
                 it.direction = player.eyeLocation.add(0.0,1.5,0.0).direction
                 it.yield = when (level) {
                     1 -> 6F
@@ -158,6 +161,8 @@ class ManualFireTurret(
             .filter { it.entity is Fireball }
             .filter { Metadata.provideForEntity(it.entity).has(MetadataKeys.MANUAL_TURRET) }
             .handler {
+                val army = Army.armies.firstOrNull { army -> it.blockList().contains(army.core) && army.core.type != Material.AIR }
+                army?.takeDamage(User.getByUUID(((it.entity as Projectile).shooter as Player).uniqueId))
                 it.blockList().clear()
             }
         Events.subscribe(EntityDamageByEntityEvent::class.java)

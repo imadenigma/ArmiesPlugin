@@ -179,6 +179,7 @@ class FireballTurret(
             .filter { it.entity is Fireball }
             .filter { Metadata.provideForEntity(it.entity).has(MetadataKeys.GUN) }
             .handler {
+                Army.armies.firstOrNull { army -> it.blockList().contains(army.core) && army.core.type != Material.AIR }?.takeDamage(null)
                 it.blockList().clear()
             }
         Events.subscribe(EntityDamageByEntityEvent::class.java)

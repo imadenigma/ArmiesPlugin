@@ -8,11 +8,15 @@ import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.weapons.Turrets
+import me.lucko.helper.Schedulers
+import me.lucko.helper.promise.Promise
+import me.lucko.helper.scheduler.Task
 import me.lucko.helper.utils.Players
 import net.md_5.bungee.api.ChatColor
 import net.md_5.bungee.api.chat.ClickEvent
 import net.md_5.bungee.api.chat.TextComponent
 import org.bukkit.Material
+import java.util.concurrent.TimeUnit
 
 @CommandAlias("a|army")
 class WarCommands : BaseCommand() {
@@ -84,6 +88,50 @@ class WarCommands : BaseCommand() {
         army.invades.add(invade)
         army.msgCR("army-msgs invade receiver", user.getArmy().name)
         user.getArmy().msgCR("army-msgs invade sender", army.name)
+        var i = 1
+        val tasks = mutableSetOf<Task>()
+        val promises = mutableSetOf<Promise<Void>>()
+        tasks.add(Schedulers.sync()
+            .runRepeating({ _ ->
+                if (i == 3) {
+                    army.members.mapNotNull { it.getPlayer() }
+                        .forEach { it.sendTitle("10 Minutes left for invading", "", 30, 70, 20) }
+                    promises.add(Schedulers.async().runLater({
+                        army.members.mapNotNull { it.getPlayer() }.forEach { it.sendTitle("5 Minutes left for invading", "", 30, 70, 20) }
+                        promises.add(
+                            Schedulers.async().runLater({
+                                var x = 5
+                                Schedulers.async().runRepeating({ task ->
+                                    run {
+                                        army.members.mapNotNull { it.getPlayer() }
+                                            .forEach {
+                                                it.sendTitle(
+                                                    "$x seconds left for invading",
+                                                    "",
+                                                    30,
+                                                    70,
+                                                    20
+                                                )
+                                            }
+                                        x--
+                                        if (x == 0) {
+                                            army.kill(user.getArmy())
+                                            task.close()
+                                        }
+                                    }
+                                }, 0L, TimeUnit.SECONDS, 1L, TimeUnit.SECONDS)
+                            }, (TimeUnit.MINUTES.toMillis(4) + TimeUnit.SECONDS.toMillis(45)))
+                        )
+                    }, 5L, TimeUnit.MINUTES))
+                }else {
+                    army.members.mapNotNull { it.getPlayer() }
+                        .forEach { it.sendTitle("${30 - i * 10} Minutes left for invading", "", 30, 70, 20) }
+                    i++
+                }
+            }, 0L,TimeUnit.MINUTES, 10L, TimeUnit.MINUTES)
+        )
+        invade.tasks.addAll(tasks)
+        invade.promises.addAll(promises)
     }
 
     @Subcommand("coalition")

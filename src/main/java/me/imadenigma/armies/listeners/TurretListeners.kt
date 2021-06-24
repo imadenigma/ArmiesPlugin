@@ -1,5 +1,7 @@
 package me.imadenigma.armies.listeners
 
+import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.MetadataKeys
 import me.imadenigma.armies.utils.compare
@@ -12,9 +14,11 @@ import me.lucko.helper.metadata.Metadata
 import me.mattstudios.mfgui.gui.components.ItemNBT
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.*
@@ -60,7 +64,7 @@ class TurretListeners : Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     fun onBlockBreak(e: BlockBreakEvent) {
         if (Metadata.provideForBlock(e.block)[MetadataKeys.UNBREAKABLE].isPresent) {
             e.isCancelled = true
@@ -69,6 +73,28 @@ class TurretListeners : Listener {
                 .ifPresent {
                     it.takeDamage(User.getByUUID(e.player.uniqueId))
                 }
+        }
+    }
+
+
+    @EventHandler
+    fun onBuilding(e: BlockPlaceEvent) {
+        val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: kotlin.run {
+            e.isCancelled = false
+            return
+        }
+        val user = User.getByUUID(e.player.uniqueId)
+        when {
+            !user.isOnArmy() -> {
+                e.isCancelled = true
+            }
+            user.getArmy() != army -> {
+                e.isCancelled = true
+            }
+            !user.hasPermission(Permissions.BUILD) -> {
+                e.isCancelled = true
+            }
+            else -> e.isCancelled = false
         }
     }
 

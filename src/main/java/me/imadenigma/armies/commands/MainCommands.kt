@@ -273,6 +273,7 @@ class MainCommands : BaseCommand() {
                 user.msgC("commands promote knight")
                 return
             }
+            if (target.get().rank == Rank.PRISONER) target.get().getArmy().prisoners.remove(target.get())
             val nextRank = getNextRank(target.get().rank)
             target.get().rank = nextRank!!
             //here

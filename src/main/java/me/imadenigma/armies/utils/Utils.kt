@@ -9,6 +9,7 @@ import me.lucko.helper.config.ConfigurationNode
 import me.lucko.helper.metadata.MetadataKey
 import me.mattstudios.mfgui.gui.components.ItemBuilder
 import me.mattstudios.mfgui.gui.components.ItemNBT
+import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Location
 import org.bukkit.Material
@@ -30,6 +31,18 @@ fun String.colorize(): String {
 
 fun JsonElement.asUUID(): UUID {
     return UUID.fromString(this.asString)
+}
+
+fun String.asLocation(): Location {
+    kotlin.runCatching {
+        val words = this.split(';')
+        val x = words[0].toDouble()
+        val y = words[1].toDouble()
+        val z = words[2].toDouble()
+        val world = Bukkit.getWorld(words[3])
+        return Location(world, x, y, z)
+    }
+    return Location(Bukkit.getWorlds()[0], 100.0, 80.0, 100.0)
 }
 
 fun yawBetweenTwoPoints(target: Location, origin: Location) : Double {
@@ -80,6 +93,13 @@ fun parseItem(node: ConfigurationNode): ItemStack {
 infix fun Double.compare(number: Number): Boolean {
     return this.roundToInt() == number.toInt() || this.toString().split(".")[0] == number.toString()
         .split(".")[0] || abs(number.toDouble() - this)  < 1
+}
+
+fun getCoreItem(): ItemStack {
+    return ItemBuilder.from(Material.BEACON).setNbt("core", "true")
+        .glow(true)
+        .setName("&3Your army's core".colorize())
+        .build()
 }
 
 /*

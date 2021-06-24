@@ -9,6 +9,7 @@ import me.imadenigma.armies.user.Sender
 import me.imadenigma.armies.user.User
 import me.imadenigma.armies.utils.asUUID
 import me.imadenigma.armies.utils.colorize
+import me.imadenigma.armies.utils.getCoreItem
 import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Helper
 import me.lucko.helper.Services
@@ -51,8 +52,13 @@ class Army(
     var alliesUUID = setOf<UUID>()
     val attackersBB: BossBar
     val defendersBB: BossBar
-
+    var lastCoreHolding: Long = 0L
+    lateinit var lastDamager: Army
     init {
+        if (!ArmyManager.consoleArmies.contains(this)) {
+            armies.add(this)
+
+        }else this.members.add(User.getByUUID(this.owner))
         armies.add(this)
         val minLoc = this.core.location.subtract(16.0, 1000.0, 16.0)
         val maxLoc = this.core.location.add(16.0, 1000.0, 16.0)
@@ -79,8 +85,8 @@ class Army(
     }
 
     fun claimArea(center: Location) {
-        val minLoc = center.clone().subtract(8.0, 100.0, 8.0)
-        val maxLoc = center.clone().add(8.0, 100.0, 8.0)
+        val minLoc = center.clone().subtract(16.0, 1000.0, 16.0)
+        val maxLoc = center.clone().add(16.0, 1000.0, 16.0)
         lands.add(Region.of(Position.of(minLoc), Position.of(maxLoc)))
     }
 
@@ -88,75 +94,127 @@ class Army(
         if (user.isOnArmy()) {
             user.getArmy().kickMember(user)
         }
+        if (ArmyManager.consoleArmies.contains(this)) {
+            user.additionalPerms.addAll(
+                arrayOf(
+                    Permissions.CHAT,
+                    Permissions.COALITION_CHAT,
+                    Permissions.HOME,
+                    Permissions.LEAVE,
+                    Permissions.INVITE,
+                )
+            )
+            user.deletedPerms.addAll(
+                arrayOf(
+                    Permissions.COALITION,
+                    Permissions.WITHDRAW_BALANCE,
+                    Permissions.BREAK,
+                    Permissions.BUILD,
+                    Permissions.DEMOTE,
+                    Permissions.PERM,
+                    Permissions.PROMOTE,
+                    Permissions.ClAIM,
+                    Permissions.SURRENDER,
+                    Permissions.DESCRIPTION,
+                    Permissions.KICK,
+                    Permissions.SHOP,
+                    Permissions.MENU,
+                    Permissions.DISBAND
+                )
+            )
+        }
         user.armyChat = true
-        user.rank = Rank.SOLDIER
+        user.rank = Rank.PEASANT
         this.members.add(user)
     }
 
     fun kickMember(user: User) {
         this.members.remove(user)
-        if (user.getPlayer() != null)
-            armies.filter { it.invades.isNotEmpty() }.forEach { it.attackersBB.removePlayer(user.getPlayer()!!); it.defendersBB.removePlayer(user.getPlayer()!!) }
-        /*ser.rank = Rank.NOTHING
+        this.prisoners.remove(user)
+        if (user.getPlayer() != null) {
+            armies.filter { it.invades.isNotEmpty() }
+                .forEach { it.attackersBB.removePlayer(user.getPlayer()!!); it.defendersBB.removePlayer(user.getPlayer()!!) }
+        }
+        user.additionalPerms.clear()
+        user.deletedPerms.clear()
+        user.rank = Rank.NOTHING
         user.armyChat = false
-        if (this.members.size == 0) {
+        if (ArmyManager.consoleArmies.contains(this)) return
+        /*if (this.members.size == 0) {
             this.members.forEach { it.rank = Rank.NOTHING }
             this.prisoners.forEach { it.rank = Rank.NOTHING }
             this.disband()
         }*/
-
     }
 
-    fun takeDamage(damager: User) {
-        if (this.invades.none { it.attacker == damager.getArmy().uuid || it.defender == damager.getArmy().uuid }) {
-            if (damager.rank == Rank.EMPEROR || damager.rank == Rank.SOLDIER || damager.rank == Rank.KNIGHT) {
-                val invade = Invade(damager.getArmy().uuid, this.uuid)
-                this.invades.add(invade)
-                damager.getArmy().invades.add(invade)
-                val msg = Services.load(Configuration::class.java).config.getNode("invading-broadcast").getString("")
-                Helper.server()
-                    .broadcastMessage(msg.colorize().replace("{0}", damager.getArmy().name).replace("{1}", this.name))
-                this.attackersBB.addPlayers(damager.getArmy().members.mapNotNull { it.getPlayer() })
-                this.defendersBB.addPlayers(this.members.mapNotNull { it.getPlayer() })
-            } else return
+    fun kill(army: Army) {
+        if (ArmyManager.consoleArmies.contains(this)) return
+        this.defendersBB.visible(false)
+        this.attackersBB.visible(false)
+        army.core.type = Material.AIR
+        army.core.state.update()
+        for (invade in invades) {
+            println("INVADING ...")
+            if (invade.defender == army.uuid && invade.attacker == this.uuid) {
+                this.deposit(this.treasury * 0.7)
+                break
+            }
+            if (invade.attacker == army.uuid && invade.defender == this.uuid) {
+                this.deposit(this.treasury * 0.4)
+                break
+            }
         }
+        army.members.forEach {
+            this.prisoners.add(it)
+            it.rank = Rank.PRISONER
+        }
+        army.prisoners.forEach {
+            this.prisoners.add(it)
+            it.rank = Rank.PRISONER
+        }
+        army.turrets.forEach {
+            this.turrets.add(it)
+            Turrets.allTurrets.filter { turret -> turret.army == army }
+                .forEach { turret -> turret.army = this }
+        }
+        army.lands.addAll(
+            this.lands
+        )
+        army.disband()
+    }
+
+    fun takeDamage(damager: User?) {
+        if (ArmyManager.consoleArmies.contains(this)) return
+        if (damager != null) {
+            if (!damager.isOnArmy()) return
+            if (this.members.contains(damager) || this.prisoners.contains(damager)) return
+            if (this.invades.none { it.attacker == damager.getArmy().uuid || it.defender == damager.getArmy().uuid }) {
+                if (damager.rank == Rank.EMPEROR || damager.rank == Rank.SOLDIER || damager.rank == Rank.KNIGHT) {
+                    val invade = Invade(damager.getArmy().uuid, this.uuid)
+                    this.invades.add(invade)
+                    damager.getArmy().invades.add(invade)
+                    val msg =
+                        Services.load(Configuration::class.java).config.getNode("invading-broadcast").getString("")
+                    Helper.server()
+                        .broadcastMessage(
+                            msg.colorize().replace("{0}", damager.getArmy().name).replace("{1}", this.name)
+                        )
+                    this.attackersBB.addPlayers(damager.getArmy().members.mapNotNull { it.getPlayer() })
+                    this.defendersBB.addPlayers(this.members.mapNotNull { it.getPlayer() })
+                } else return
+            }
+        }
+        if (damager != null) lastDamager = damager.getArmy()
         this.hp -= 5
         val progress = ((this.hp * 100).toDouble() / 250) / 100
         this.attackersBB.progress(progress)
         if (this.hp <= 0) {
-            damager.getPlayer()!!.server.broadcastMessage("&aThe army &c${damager.getArmy().name} &awon the war against &c${this.name}".colorize())
+           if (damager != null)  damager.getPlayer()!!.server.broadcastMessage("&aThe army &c${damager.getArmy().name} &awon the war against &c${this.name}".colorize())
         } else return
-        this.defendersBB.visible(false)
-        this.attackersBB.visible(false)
-        this.core.type = Material.AIR
-        this.core.state.update()
-        if (damager.isOnArmy()) {
-            for (invade in invades) {
-                println("INVADING ...")
-                if (invade.defender == this.uuid && invade.attacker == damager.getArmy().uuid) {
-                    damager.getArmy().deposit(this.treasury * 0.7)
-                    break
-                }
-                if (invade.attacker == this.uuid && invade.defender == damager.getArmy().uuid) {
-                    damager.getArmy().deposit(this.treasury * 0.4)
-                    break
-                }
-            }
-            this.members.forEach {
-                damager.getArmy().prisoners.add(it)
-                it.rank = Rank.PRISONER
-            }
-            this.prisoners.forEach {
-                damager.getArmy().prisoners.add(it)
-                it.rank = Rank.PRISONER
-            }
-            this.turrets.forEach {
-                damager.getArmy().turrets.add(it)
-                Turrets.allTurrets.filter { turret -> turret.army == this }
-                    .forEach { turret -> turret.army = damager.getArmy() }
-            }
-        }
-        this.disband()
+        val invade = invades.first { (it.attacker == this.uuid && it.defender == lastDamager.uuid) || (it.defender == this.uuid && it.attacker == lastDamager.uuid) }
+        invade.promises.forEach { it.cancel() }
+        invade.tasks.forEach { it.close() }
+        damager?.getArmy()?.kill(this) ?: lastDamager.kill(this)
     }
 
     fun disband() {
@@ -169,6 +227,8 @@ class Army(
             it1.enemies.remove(this)
             it1.allies.remove(this)
         }
+        val user = User.getByUUID(this.owner)
+        user.getPlayer()?.inventory?.remove(getCoreItem())
         Turrets.allTurrets.filter { it.army == this }.forEach { it.despawn() }
         armies.remove(this)
         this.enemies.clear()
@@ -179,6 +239,13 @@ class Army(
         this.isOpened = false
         this.prisoners.clear()
         this.lands.clear()
+    }
+
+    fun privateMsg(msg: String) {
+        for (member in this.members) {
+            if (!member.armyChat) return
+            member.msg(msg)
+        }
     }
 
     override fun serialize(): JsonElement {
@@ -269,8 +336,14 @@ class Army(
         }
     }
 
-    companion object {
+    override fun msg(msg: String) {
+        for (player in this.members.mapNotNull { it.getPlayer() }) {
+            player.sendMessage(msg.colorize())
+        }
+    }
 
+
+    companion object {
         val armies = mutableSetOf<Army>()
 
         fun deserialize(jsonElement: JsonElement): Army {
@@ -314,7 +387,7 @@ class Army(
                     core,
                     home,
                     areas,
-                    treasury,
+                    0.0,
                     hp,
                     prisoners = prisoners,
                     invades = invades,
@@ -322,6 +395,8 @@ class Army(
                     description = description,
                     cardCount = cardCount
                 )
+            println("treasury: $treasury")
+            army.deposit(treasury)
             army.enemUUID = enemies
             army.alliesUUID = allies
             return army
@@ -337,18 +412,6 @@ class Army(
         }
     }
 
-    override fun msg(msg: String) {
-        for (player in this.members.mapNotNull { it.getPlayer() }) {
-            player.sendMessage(msg.colorize())
-        }
-    }
-
-    fun privateMsg(msg: String) {
-        for (member in this.members) {
-            if (!member.armyChat) return
-            member.msg(msg)
-        }
-    }
 
 }
 

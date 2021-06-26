@@ -14,7 +14,7 @@ import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.serialize.Position
-import org.apache.commons.codec.binary.Base64.encodeBase64
+
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.SkullType
@@ -99,6 +99,7 @@ abstract class Turrets(
             .add("distance", distance)
             .add("uuid", this.uuid.toString())
             .build()
+
     }
 
     open fun setSkullBlock(locBloque: Block, url: String) {
@@ -106,7 +107,7 @@ abstract class Turrets(
         val skullBlock = locBloque.state as Skull
         skullBlock.skullType = SkullType.PLAYER
         val profile = GameProfile(UUID.randomUUID(), null)
-        val encodedData = encodeBase64(java.lang.String.format("{textures:{SKIN:{url:\"%s\"}}}", url).toByteArray())
+        val encodedData = Base64.getEncoder().encode(java.lang.String.format("{textures:{SKIN:{url:\"%s\"}}}", url).toByteArray())
         profile.properties.put("textures", Property("textures", String(encodedData)))
         try {
             val profileField = skullBlock.javaClass.getDeclaredField("profile")

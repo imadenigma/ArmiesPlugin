@@ -3,6 +3,7 @@ package me.imadenigma.armies.utils
 import com.google.common.reflect.TypeToken
 import com.google.gson.JsonElement
 import me.imadenigma.armies.Configuration
+import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.user.User
 import me.lucko.helper.Services
 import me.lucko.helper.config.ConfigurationNode
@@ -52,7 +53,7 @@ fun yawBetweenTwoPoints(target: Location, origin: Location) : Double {
     return (acos(xDiff / distance) * 180 / PI) - 90
 }
 
-fun getClaimCard(): ItemStack {
+fun getClaimCard(army: Army?): ItemStack {
     if (::claimCard.isInitialized) return claimCard
     val material = Services.load(Configuration::class.java)
         .config.getNode("shop")
@@ -62,7 +63,7 @@ fun getClaimCard(): ItemStack {
         .getValue(TypeToken.of(Material::class.java))
         ?: Material.MAP
     return ItemBuilder.from(material)
-        .setNbt("isCard", "true")
+        .setNbt("isCard", army?.name ?: "null")
         .setName("&3Claim Card".colorize())
         .build().also { claimCard = it }
 }
@@ -95,8 +96,8 @@ infix fun Double.compare(number: Number): Boolean {
         .split(".")[0] || abs(number.toDouble() - this)  < 1
 }
 
-fun getCoreItem(): ItemStack {
-    return ItemBuilder.from(Material.BEACON).setNbt("core", "true")
+fun getCoreItem(army: Army): ItemStack {
+    return ItemBuilder.from(Material.BEACON).setNbt("core", army.name)
         .glow(true)
         .setName("&3Your army's core".colorize())
         .build()
@@ -108,41 +109,41 @@ fun getCoreItem(): ItemStack {
  *
  */
 
-fun getSentryUpgradeItem(): ItemStack {
+fun getSentryUpgradeItem(army: Army): ItemStack {
     if (::sentryUpItem.isInitialized) return sentryUpItem
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "sentry-upgrade")
-    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "sentry").also { sentryUpItem = it }
+    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "sentry-${army.name}").also { sentryUpItem = it }
 }
 
-fun getGunUpgradeItem(): ItemStack {
+fun getGunUpgradeItem(army: Army): ItemStack {
     if (::gunUpItem.isInitialized) return gunUpItem
     val node =
         Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "gun-turret-upgrade")
-    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "gun").also { gunUpItem = it }
+    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "gun-${army.name}").also { gunUpItem = it }
 }
 
-fun getSentryItem(): ItemStack {
+fun getSentryItem(army: Army): ItemStack {
     if (::sentryItem.isInitialized) return sentryItem
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "sentry")
-    return ItemNBT.setNBTTag(parseItem(node), "turret", "sentry").also { sentryItem = it }
+    return ItemNBT.setNBTTag(parseItem(node), "turret", "sentry-${army.name}").also { sentryItem = it }
 }
 
-fun getGunItem(): ItemStack {
+fun getGunItem(army: Army): ItemStack {
     if (::gunItem.isInitialized) return gunItem
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "gun-turret")
-    return ItemNBT.setNBTTag(parseItem(node), "turret", "gun").also { gunItem = it }
+    return ItemNBT.setNBTTag(parseItem(node), "turret", "gun-${army.name}").also { gunItem = it }
 }
 
-fun getManualGunItem(): ItemStack {
+fun getManualGunItem(army: Army): ItemStack {
     if (::manualGun.isInitialized) return manualGun
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "manual-gun")
-    return ItemNBT.setNBTTag(parseItem(node), "turret", "manual gun").also { manualGun = it }
+    return ItemNBT.setNBTTag(parseItem(node), "turret", "manual-${army.name}").also { manualGun = it }
 }
 
-fun getManualUpgradeItem(): ItemStack {
+fun getManualUpgradeItem(army: Army): ItemStack {
     if (::manualUpgrade.isInitialized) return manualUpgrade
     val node = Services.load(Configuration::class.java).config.getNode("shop", "products", "turrets", "manual-upgrade")
-    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "manual").also { manualUpgrade = it }
+    return ItemNBT.setNBTTag(parseItem(node), "upgrade", "manual-${army.name}").also { manualUpgrade = it }
 }
 
 fun Location.equalsO(location: Location): Boolean {

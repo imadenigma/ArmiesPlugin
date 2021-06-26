@@ -29,37 +29,37 @@ class ArmyManager {
                 )
             }
             val config = Services.load(Configuration::class.java).config.getNode("console-armies")
-            val safeZone = Army(
-                UUID.randomUUID(),
-                "safeZone",
-                UUID.randomUUID(),
-                mutableSetOf(),
-                mutableSetOf(),
-                true,
-                config.getNode("safezone", "core").getString("").asLocation().block,
-                config.getNode("safezone", "core").getString("").asLocation(),
-                mutableSetOf(),
-                0.0,
-                250,
-                mutableSetOf(),
-                description = config.getNode("safezone", "description").getString("")
-            )
-            val us = Army(
-                UUID.randomUUID(),
-                "US Army",
-                UUID.randomUUID(),
-                core = config.getNode("us", "core").getString("").asLocation().block,
-                description = config.getNode("us", "description").getString(""),
-                isOpened = true,
-                chatType = 'a',
-                home = config.getNode("us", "core").getString("").asLocation(),
-            )
-            consoleArmies = setOf(
-                us,
-                safeZone
-            )
-
-
+            if (Army.armies.none { it.name.equals("us army", true) }) {
+                val safeZone = Army(
+                        UUID.randomUUID(),
+                        "SafeZone",
+                        UUID.randomUUID(),
+                        mutableSetOf(),
+                        mutableSetOf(),
+                        true,
+                        config.getNode("safezone", "core").getString("").asLocation().block,
+                        config.getNode("safezone", "core").getString("").asLocation(),
+                        mutableSetOf(),
+                        0.0,
+                        250,
+                        mutableSetOf(),
+                        description = config.getNode("safezone", "description").getString("")
+                )
+                val us = Army(
+                        UUID.randomUUID(),
+                        "US Army",
+                        UUID.randomUUID(),
+                        core = config.getNode("us", "core").getString("").asLocation().block,
+                        description = config.getNode("us", "description").getString(""),
+                        isOpened = true,
+                        chatType = 'a',
+                        home = config.getNode("us", "core").getString("").asLocation(),
+                )
+                consoleArmies = setOf(
+                        us,
+                        safeZone
+                )
+            }
         }
         Log.info("&3Loading took &c$ms &3ms".colorize())
     }

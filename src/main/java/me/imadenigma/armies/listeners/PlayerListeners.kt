@@ -43,16 +43,32 @@ class PlayerListeners : Listener {
         if (!e.hasItem()) return
         if (!(e.action == Action.RIGHT_CLICK_AIR || e.action == Action.RIGHT_CLICK_BLOCK)) return
         val user = User.getByUUID(e.player.uniqueId)
-        if (!MainCommands.checkExistence(user, "name")) return
-        if (!getClaimCard().isSimilar(e.player.inventory.itemInMainHand)) return
-        val army = Army.getByLocation(e.player.location.x, e.player.location.z)
-        if (army != null) {
-            e.player.sendMessage("this area is taken")
-            return
-        } else {
-            user.getArmy().claimArea(e.player.location)
-            e.player.sendMessage("you claim the area successfully")
-            e.player.inventory.itemInMainHand.amount--
+        if (!user.isOnArmy()) return
+        if (ItemNBT.getNBTTag(e.player.inventory.itemInMainHand, "isCard").equals("safezone", true)) {
+            if (!MainCommands.checkExistence(user, "name")) return
+            val army = Army.getByLocation(e.player.location.x, e.player.location.z)
+            if (army != null) {
+                e.player.sendMessage("this area is taken")
+                return
+            } else {
+                Army.armies.first { it.name.equals("safezone", true) }.claimArea(e.player.location)
+                e.player.sendMessage("you claim the area successfully")
+                e.player.inventory.itemInMainHand.amount--
+            }
+
+        }
+        if (ItemNBT.getNBTTag(e.player.inventory.itemInMainHand, "isCard") == user.getArmy().name) {
+            if (!MainCommands.checkExistence(user, "name")) return
+
+            val army = Army.getByLocation(e.player.location.x, e.player.location.z)
+            if (army != null) {
+                e.player.sendMessage("this area is taken")
+                return
+            } else {
+                user.getArmy().claimArea(e.player.location)
+                e.player.sendMessage("you claim the area successfully")
+                e.player.inventory.itemInMainHand.amount--
+            }
         }
 
 
@@ -117,27 +133,31 @@ class PlayerListeners : Listener {
             .findAny()
         if (!turret.isPresent) return
         val user = User.getByUUID(e.player.uniqueId)
-        if (ItemNBT.getNBTTag(itemInHand, "upgrade") == "") return
-        when (itemInHand.type) {
-            Material.IRON_NUGGET -> {
+        val nbt = ItemNBT.getNBTTag(itemInHand, "upgrade").split("-")
+        if (nbt.size != 2) return
+        if (nbt[0] == "") return
+        if (!user.isOnArmy()) return
+        if (nbt[1] == user.getArmy().name)
+        when  {
+            itemInHand.type == Material.IRON_NUGGET -> {
                 turret.get().addAmmo(
                     user, itemInHand.amount
                 )
                 e.player.sendMessage("&aammo added".colorize())
             }
-            getSentryUpgradeItem().type -> {
+            nbt[0] == "sentry" -> {
                 if (turret.get() is Sentry) {
                     turret.get().upgrade(user)
                     itemInHand.amount--
                 }
             }
-            getGunUpgradeItem().type -> {
+            nbt[0] == "gun" -> {
                 if (turret.get() is FireballTurret) {
                     turret.get().upgrade(user)
                     itemInHand.amount--
                 }
             }
-            getManualUpgradeItem().type -> {
+            nbt[0] == "manual" -> {
                 if (turret.get() is ManualFireTurret) {
                     turret.get().upgrade(user)
                     itemInHand.amount--
@@ -181,7 +201,7 @@ class PlayerListeners : Listener {
             return
         }
         user.getPlayer()!!.inventory.addItem(
-            getCoreItem()
+            getCoreItem(user.getArmy())
         )
         e.clickedBlock.type = Material.AIR
         e.clickedBlock.state.update()
@@ -212,12 +232,14 @@ class PlayerListeners : Listener {
         val user = User.getByUUID(e.player.uniqueId)
         val army = Army.getByLocation(e.block.location.x, e.block.location.z)
         if (user.rank != Rank.EMPEROR || !user.isOnArmy()) return
+        val item = e.player.inventory.itemInMainHand ?: return
+        if (ItemNBT.getNBTTag(item, "core") == "") return
         if (!user.isOutsideArea && user.getArmy() != army) {
             user.msg("&cyou can't place the core here, this area is claimed")
             return
         }
         when {
-            user.getPlayer()!!.inventory.contents.any { ItemNBT.getNBTTag(it, "core") != "" } -> {
+            user.getPlayer()!!.inventory.contents.any { ItemNBT.getNBTTag(it, "isCard") != "" } -> {
                 user.getArmy().claimArea(e.block.location)
                 e.isCancelled = false
                 Arrays.stream(e.player.inventory.contents)

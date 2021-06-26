@@ -33,7 +33,12 @@ class TurretListeners : Listener {
     fun onPlayerInteract(e: PlayerInteractEvent) {
         if (!e.hasItem()) return
         val user = User.getByUUID(e.player.uniqueId)
-        if (ItemNBT.getNBTTag(e.item, "turret") == "sentry") {
+        if (!user.isOnArmy() || user.isOutsideArea) return
+        val nbt = ItemNBT.getNBTTag(e.item, "turret")
+        runCatching {
+            if (user.getArmy().name != nbt.split("-")[1]) return
+        }.let { if (it.isFailure) return }
+        if (nbt.split("-")[0] == "sentry") {
             if (e.hasBlock()) Sentry(
                 e.clickedBlock.location.add(0.0, 1.0, 0.0),
                 user.getArmy(),
@@ -43,18 +48,17 @@ class TurretListeners : Listener {
             e.item.amount -= 1
             return
         }
-        if (ItemNBT.getNBTTag(e.item, "turret") == "gun") {
+        if (nbt.split("-")[0] == "gun") {
             if (e.hasBlock()) FireballTurret(
                 e.clickedBlock.location.add(0.0, 1.0, 0.0),
                 user.getArmy(),
                 uuid = UUID.randomUUID()
             )
             else FireballTurret(e.player.location, user.getArmy(), uuid = UUID.randomUUID())
-            println("cc")
             e.item.amount -= 1
             return
         }
-        if (ItemNBT.getNBTTag(e.item, "turret") == "manual gun") {
+        if (nbt.split("-")[0] == "manual") {
             if (e.hasBlock()) ManualFireTurret(
                 e.clickedBlock.location.add(0.0, 1.0, 0.0),
                 uuid = UUID.randomUUID()

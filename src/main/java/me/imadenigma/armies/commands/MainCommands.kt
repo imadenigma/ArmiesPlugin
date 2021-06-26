@@ -9,6 +9,7 @@ import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
 import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.army.Rank
+import me.imadenigma.armies.guis.AdminGui
 import me.imadenigma.armies.guis.MenuGui
 import me.imadenigma.armies.guis.RankGui
 import me.imadenigma.armies.user.Invite
@@ -67,8 +68,17 @@ class MainCommands : BaseCommand() {
     fun sethome(user: User) {
         checkExistence(user, "sethome")
         if (!hasPermission(user, Permissions.SET_HOME, "sethome")) return
-        Army.armies.first { it.members.contains(user) }.home = user.getPlayer()!!.location
-        success(user, "sethome")
+        val army = Army.getByLocation(user.getPlayer()!!.location.x, user.getPlayer()!!.location.z) ?: kotlin.run {
+            user.msg("&cYou must set your home in a claimed area by your army")
+            return
+        }
+        if (army == user.getArmy()) {
+            Army.armies.first { it.members.contains(user) }.home = user.getPlayer()!!.location
+            success(user, "sethome")
+            return
+        }
+        user.msg("&cYou can't set your home in a claimed area by another army !")
+
     }
 
 
@@ -382,6 +392,31 @@ class MainCommands : BaseCommand() {
         }
     }
 
+    @Subcommand("admin")
+    @Description("open up the admin gui for admins")
+    @CommandPermission("army.admin")
+    fun admin(user: User) {
+        AdminGui(user)
+    }
+
+    @Subcommand("info|infos")
+    @Description("get your army's informations")
+    fun info(user: User) {
+        if (!checkExistence(user, "info")) return
+        user.msg("&8&l&m============ <&r&3Infos of &6${user.getArmy().name}&8&l&m> &l&m=============".colorize())
+        user.msg("Description: &3${user.getArmy().description}")
+        user.msg("Leader: &6${getPlayerName(user.getArmy().owner)}")
+        // TODO create date of creation
+        user.msg("Created: &e${user.getArmy().dateOfCreation.monthValue}/${user.getArmy().dateOfCreation.dayOfMonth}/${user.getArmy().dateOfCreation.year}")
+        user.msg("Lands: &3${user.getArmy().lands.size}")
+        user.msg("Members (all): &3${user.getArmy().members.size + user.getArmy().prisoners.size}")
+        user.msg("Members (online): &3${user.getArmy().members.mapNotNull { it.getPlayer() }.size + user.getArmy().prisoners.mapNotNull { it.getPlayer() }.size}")
+
+    }
+
+
+
+
     companion object {
 
         fun getPreviousRank(rank: Rank): Rank {
@@ -409,6 +444,11 @@ class MainCommands : BaseCommand() {
             if (user.hasPermission(permission)) return true
             user.msgC("commands $command need-permission")
             return false
+        }
+
+        fun getPlayerName(uuid: UUID): String {
+            return if (Players.getOffline(uuid).isPresent) Players.getOffline(uuid).get().name ?: "Console"
+            else "Console"
         }
 
         fun getNextRank(rank: Rank): Rank? {

@@ -57,7 +57,7 @@ class ShopGui(val user: User) {
                     }
                     user.getArmy().withdraw(price)
                 }
-                getClaimCard().give(user)
+                getClaimCard(user.getArmy()).give(user)
                 val msg = products.parent!!.getNode("success").getString("n").replace("{0}", item.itemMeta.displayName)
                 user.msg(msg)
                 user.getPlayer()!!.closeInventory()
@@ -84,17 +84,16 @@ class ShopGui(val user: User) {
                 user.withdraw(price)
                 if (nbt[0] == "turret") {
                     when {
-                        nbt[1] == "gun" -> getGunItem().give(user)
-                        nbt[1] == "manual gun" -> getManualGunItem().give(user)
-                        else -> getSentryItem().give(user)
+                        nbt[1] == "gun" -> getGunItem(user.getArmy()).give(user)
+                        nbt[1] == "manual gun" -> getManualGunItem(user.getArmy()).give(user)
+                        else -> getSentryItem(user.getArmy()).give(user)
                     }
                 }else if (nbt[0] == "upgrade") {
                     println(nbt[1])
-                    println(getManualUpgradeItem())
                     when {
-                        nbt[1] == "gun" -> getGunUpgradeItem().give(user)
-                        nbt[1] == "sentry" -> getSentryUpgradeItem().give(user)
-                        else -> getManualUpgradeItem().give(user)
+                        nbt[1] == "gun" -> getGunUpgradeItem(user.getArmy()).give(user)
+                        nbt[1] == "sentry" -> getSentryUpgradeItem(user.getArmy()).give(user)
+                        else -> getManualUpgradeItem(user.getArmy()).give(user)
                     }
                 }
                 val msg = this.conf.getNode("success").getString("n").replace("{0}", item.itemMeta.displayName)

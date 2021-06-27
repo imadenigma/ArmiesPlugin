@@ -89,7 +89,6 @@ class ShopGui(val user: User) {
                         else -> getSentryItem(user.getArmy()).give(user)
                     }
                 }else if (nbt[0] == "upgrade") {
-                    println(nbt[1])
                     when {
                         nbt[1] == "gun" -> getGunUpgradeItem(user.getArmy()).give(user)
                         nbt[1] == "sentry" -> getSentryUpgradeItem(user.getArmy()).give(user)

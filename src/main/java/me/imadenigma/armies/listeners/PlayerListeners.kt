@@ -1,4 +1,4 @@
-    package me.imadenigma.armies.listeners
+package me.imadenigma.armies.listeners
 
 import me.imadenigma.armies.Configuration
 import me.imadenigma.armies.army.Army
@@ -15,6 +15,7 @@ import me.lucko.helper.Helper
 import me.lucko.helper.Schedulers
 import me.lucko.helper.Services
 import me.mattstudios.mfgui.gui.components.ItemNBT
+import net.md_5.bungee.api.ChatMessageType
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -25,6 +26,7 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockDamageEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.PlayerInteractEvent
@@ -85,7 +87,7 @@ class PlayerListeners : Listener {
                 army.takeDamage(user)
             }
             user.getArmy() == army && user.hasPermission(Permissions.BREAK) && e.block != army.core -> e.isCancelled =
-                false
+                    false
         }
     }
 
@@ -93,7 +95,7 @@ class PlayerListeners : Listener {
     @EventHandler
     fun onDamageBlock(e: BlockDamageEvent) {
         val turret =
-            Turrets.allTurrets.firstOrNull { it.location.x compare e.block.x && it.location.z compare e.block.z }
+                Turrets.allTurrets.firstOrNull { it.location.x compare e.block.x && it.location.z compare e.block.z }
         val user = User.getByUUID(e.player.uniqueId)
         if (turret != null) {
             turret.takeDamage(user)
@@ -108,7 +110,7 @@ class PlayerListeners : Listener {
                 army.takeDamage(user)
             }
             user.getArmy() == army && user.hasPermission(Permissions.BREAK) && e.block != army.core -> e.isCancelled =
-                false
+                    false
         }
     }
 
@@ -129,8 +131,8 @@ class PlayerListeners : Listener {
         val itemInHand = e.player.inventory.itemInMainHand
         val loc = e.clickedBlock.location
         val turret = Turrets.allTurrets.stream()
-            .filter { it.location.world == loc.world && it.location.x compare loc.x && it.location.z compare loc.z }
-            .findAny()
+                .filter { it.location.world == loc.world && it.location.x compare loc.x && it.location.z compare loc.z }
+                .findAny()
         if (!turret.isPresent) return
         val user = User.getByUUID(e.player.uniqueId)
         val nbt = ItemNBT.getNBTTag(itemInHand, "upgrade").split("-")
@@ -138,33 +140,33 @@ class PlayerListeners : Listener {
         if (nbt[0] == "") return
         if (!user.isOnArmy()) return
         if (nbt[1] == user.getArmy().name)
-        when  {
-            itemInHand.type == Material.IRON_NUGGET -> {
-                turret.get().addAmmo(
-                    user, itemInHand.amount
-                )
-                e.player.sendMessage("&aammo added".colorize())
-            }
-            nbt[0] == "sentry" -> {
-                if (turret.get() is Sentry) {
-                    turret.get().upgrade(user)
-                    itemInHand.amount--
+            when {
+                itemInHand.type == Material.IRON_NUGGET -> {
+                    turret.get().addAmmo(
+                            user, itemInHand.amount
+                    )
+                    e.player.sendMessage("&aammo added".colorize())
                 }
-            }
-            nbt[0] == "gun" -> {
-                if (turret.get() is FireballTurret) {
-                    turret.get().upgrade(user)
-                    itemInHand.amount--
+                nbt[0] == "sentry" -> {
+                    if (turret.get() is Sentry) {
+                        turret.get().upgrade(user)
+                        itemInHand.amount--
+                    }
                 }
-            }
-            nbt[0] == "manual" -> {
-                if (turret.get() is ManualFireTurret) {
-                    turret.get().upgrade(user)
-                    itemInHand.amount--
+                nbt[0] == "gun" -> {
+                    if (turret.get() is FireballTurret) {
+                        turret.get().upgrade(user)
+                        itemInHand.amount--
+                    }
                 }
+                nbt[0] == "manual" -> {
+                    if (turret.get() is ManualFireTurret) {
+                        turret.get().upgrade(user)
+                        itemInHand.amount--
+                    }
+                }
+                else -> return
             }
-            else -> return
-        }
     }
 
     @EventHandler
@@ -178,6 +180,7 @@ class PlayerListeners : Listener {
     fun onPlayerMove(e: PlayerMoveEvent) {
         val user = User.getByUUID(e.player.uniqueId)
         val army = Army.getByLocation(e.player.location.x, e.player.location.z)
+        user.isPvp = !(army?.name.equals("safezone", true))
         if (army != null && user.isOutsideArea) {
             e.player.sendTitle("&3&l${army.name}".colorize(), army.description, 10, 70, 20)
             user.isOutsideArea = false
@@ -201,7 +204,7 @@ class PlayerListeners : Listener {
             return
         }
         user.getPlayer()!!.inventory.addItem(
-            getCoreItem(user.getArmy())
+                getCoreItem(user.getArmy())
         )
         e.clickedBlock.type = Material.AIR
         e.clickedBlock.state.update()
@@ -220,8 +223,11 @@ class PlayerListeners : Listener {
                 return@runRepeating
             }
             if ((System.currentTimeMillis() - user.getArmy().lastCoreHolding) / 1000 < TimeUnit.MINUTES.toMillis(
-                    minutes.toLong()
-                )) task.close()
+                            minutes.toLong()
+                    )) {
+                task.close()
+                return@runRepeating
+            }
             user.getArmy().withdraw(user.getArmy().getBalance() * money / 100)
         }, minutes.toLong(), TimeUnit.MINUTES, minutes.toLong(), TimeUnit.MINUTES)
     }
@@ -232,35 +238,37 @@ class PlayerListeners : Listener {
         val user = User.getByUUID(e.player.uniqueId)
         val army = Army.getByLocation(e.block.location.x, e.block.location.z)
         if (user.rank != Rank.EMPEROR || !user.isOnArmy()) return
-        val item = e.player.inventory.itemInMainHand ?: return
-        if (ItemNBT.getNBTTag(item, "core") == "") return
+        e.isCancelled = true
+        val coreItem = getCoreItem(user.getArmy())
+        if (ItemNBT.getNBTTag(e.player.inventory.itemInMainHand, "core") != ItemNBT.getNBTTag(coreItem, "core")) {
+            e.isCancelled = true
+            return
+        }
         if (!user.isOutsideArea && user.getArmy() != army) {
             user.msg("&cyou can't place the core here, this area is claimed")
             return
         }
-        when {
-            user.getPlayer()!!.inventory.contents.any { ItemNBT.getNBTTag(it, "isCard") != "" } -> {
-                user.getArmy().claimArea(e.block.location)
-                e.isCancelled = false
-                Arrays.stream(e.player.inventory.contents)
+        if (army == null) {
+            e.isCancelled = true
+            user.msg("&4You should claim the area then try place your army's core")
+            return
+        }
+        if (user.getArmy() == army) {
+            e.isCancelled = false
+            Arrays.stream(e.player.inventory.contents)
                     .filter(Objects::nonNull)
                     .filter { ItemNBT.getNBTTag(it, "core") != "" }
-                    .forEach { user.getPlayer()!!.inventory.remove(it) }
-                Arrays.stream(e.player.inventory.contents)
-                    .filter(Objects::nonNull)
-                    .filter { ItemNBT.getNBTTag(it, "isCard") != "" }
-                    .findAny().get().amount--
-                user.getArmy().core = e.block
-            }
-            user.getArmy() == army -> {
-                e.isCancelled = false
-                Arrays.stream(e.player.inventory.contents)
-                    .filter(Objects::nonNull)
-                    .filter { ItemNBT.getNBTTag(it, "core") != "" }
-                    .forEach { user.getPlayer()!!.inventory.remove(it) }
-                user.getArmy().core = e.block
-            }
-            else -> e.isCancelled = true
+                    .forEach { e.player.inventory.removeItem(it) }
+            user.getArmy().core = e.block
+            user.msg("&3You deplaced your army's core successfully !")
+
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    fun onEntityDamage(e: EntityDamageByEntityEvent) {
+        if (e.damager is Player && e.entity is Player) {
+            e.isCancelled = !(User.getByUUID(e.damager.uniqueId).isPvp)
         }
     }
 }

@@ -54,7 +54,7 @@ fun yawBetweenTwoPoints(target: Location, origin: Location) : Double {
 }
 
 fun getClaimCard(army: Army?): ItemStack {
-    if (::claimCard.isInitialized) return claimCard
+    if (::claimCard.isInitialized) return ItemNBT.setNBTTag(claimCard, "isCard", army?.name ?: "null")
     val material = Services.load(Configuration::class.java)
         .config.getNode("shop")
         .getNode("products")
@@ -69,7 +69,7 @@ fun getClaimCard(army: Army?): ItemStack {
 }
 
 fun ItemStack.give(user: User) {
-    println("reach here")
+
     if (user.getPlayer()!!.inventory.firstEmpty() == -1) {
         user.getPlayer()!!.world.dropItem(user.getPlayer()!!.location, this)
         return

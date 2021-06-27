@@ -35,7 +35,7 @@ class MainCommands : BaseCommand() {
             user.msgC("commands create already-in-army")
             return
         }
-        if (name == " ") {
+        if (name == " " || name.contains("nazi", true) || name.length <= 3) {
             user.msg("&4Name not valid")
             return
         }
@@ -206,7 +206,7 @@ class MainCommands : BaseCommand() {
             user.msg("&4You cannot invite yourself")
             return
         }
-        println("user: $user &&&&& target: $target")
+
         if (target.isOnArmy()) {
             if (target.getArmy() == user.getArmy()) {
                 user.msgC("commands invite same-army")

@@ -21,14 +21,16 @@ import me.lucko.helper.bossbar.BukkitBossBarFactory
 import me.lucko.helper.gson.GsonSerializable
 import me.lucko.helper.gson.JsonBuilder
 import me.lucko.helper.promise.Promise
-import me.lucko.helper.scheduler.Task
 import me.lucko.helper.serialize.BlockPosition
 import me.lucko.helper.serialize.Position
 import me.lucko.helper.serialize.Region
+import net.md_5.bungee.api.ChatMessageType
+import net.md_5.bungee.api.chat.TextComponent
 import org.apache.commons.lang.StringUtils
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.entity.Player
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -56,16 +58,16 @@ class Army(
 ) : GsonSerializable, ArmyEconomy, Sender {
     var enemUUID = setOf<UUID>()
     var alliesUUID = setOf<UUID>()
-    val attackersBB: BossBar
-    val defendersBB: BossBar
     var lastCoreHolding: Long = 0L
-    lateinit var lastDamager: Army
+
+    internal val attackersBB: BossBar
+    internal val defendersBB: BossBar
+    internal var isDisbanded: Boolean = false
+    private lateinit var lastDamager: Army
+    private val promises = mutableSetOf<Promise<Void>>()
 
     init {
-        if (!ArmyManager.consoleArmies.contains(this)) {
-            armies.add(this)
-
-        } else this.members.add(User.getByUUID(this.owner))
+        this.members.add(User.getByUUID(this.owner))
         armies.add(this)
         val minLoc = this.core.location.subtract(16.0, 1000.0, 16.0)
         val maxLoc = this.core.location.add(16.0, 1000.0, 16.0)
@@ -147,11 +149,11 @@ class Army(
         user.rank = Rank.NOTHING
         user.armyChat = false
         if (ArmyManager.consoleArmies.contains(this)) return
-        /*if (this.members.size == 0) {
-            this.members.forEach { it.rank = Rank.NOTHING }
-            this.prisoners.forEach { it.rank = Rank.NOTHING }
-            this.disband()
-        }*/
+//        if (this.members.size == 0) {
+//            this.members.forEach { it.rank = Rank.NOTHING }
+//            this.prisoners.forEach { it.rank = Rank.NOTHING }
+//            this.disband()
+//        }
     }
 
     fun kill(army: Army) {
@@ -161,7 +163,6 @@ class Army(
         army.core.type = Material.AIR
         army.core.state.update()
         for (invade in invades) {
-            println("INVADING ...")
             if (invade.defender == army.uuid && invade.attacker == this.uuid) {
                 this.deposit(this.treasury * 0.7)
                 break
@@ -198,68 +199,38 @@ class Army(
             if (this.invades.none { it.attacker == damager.getArmy().uuid || it.defender == damager.getArmy().uuid }) {
                 if (damager.rank == Rank.EMPEROR || damager.rank == Rank.SOLDIER || damager.rank == Rank.KNIGHT) {
                     val invade = Invade(damager.getArmy().uuid, this.uuid)
+                    val damagerMembers = mutableSetOf<Player>()
+                    damagerMembers.addAll(damager.getArmy().members.mapNotNull { it.getPlayer() })
+                    damagerMembers.addAll(damager.getArmy().prisoners.mapNotNull { it.getPlayer() })
+                    damagerMembers.addAll(this.members.mapNotNull { it.getPlayer() })
+                    damagerMembers.addAll(this.prisoners.mapNotNull { it.getPlayer() })
+                    damagerMembers.forEach { if (!this@Army.isDisbanded) it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("30 minutes left")) }
+                    val promise = with(Promise.start()) {
+
+                        this.thenRunDelayedSync({ if (!this@Army.isDisbanded) damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("20 minutes left")) } }, 10L, TimeUnit.SECONDS)
+                                .thenRunDelayedSync({ if (!this@Army.isDisbanded) damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("10 minutes left")) } }, 10L, TimeUnit.SECONDS)
+                                .thenRunDelayedSync({ if (!this@Army.isDisbanded)damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("5 minutes left")) } }, 5L, TimeUnit.SECONDS)
+                                .thenRunDelayedSync({
+                                    var i = 11
+                                    Schedulers.sync().runRepeating({task ->
+                                        i--
+                                        damagerMembers.forEach { if (!this@Army.isDisbanded) it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("$i seconds left")) }
+                                        if (i <= 0 && !this@Army.isDisbanded) {
+                                            this@Army.kill(damager.getArmy())
+                                            task.close()
+                                            this.close()
+                                        }else if (i <= 0) {
+                                            task.close()
+                                            this.close()
+                                        }
+                                    },1L, TimeUnit.SECONDS, 1L, TimeUnit.SECONDS).bindWith(invade.terminableConsumer)
+
+
+                                }, TimeUnit.SECONDS.toMillis(5) - TimeUnit.SECONDS.toMillis(5), TimeUnit.MILLISECONDS)
+
+                    }
+                    this.promises.add(promise)
                     this.invades.add(invade)
-                    val tasks = mutableSetOf<Task>()
-                    val promises = mutableSetOf<Promise<Void>>()
-                    var i = 1
-                    tasks.add(Schedulers.sync()
-                            .runRepeating({ task ->
-                                if (i == 3) {
-                                    damager.getArmy().members.mapNotNull { it.getPlayer() }
-                                            .forEach { it.sendTitle("10 Minutes invading", "", 30, 70, 20) }
-                                    damager.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                            .forEach { it.sendTitle("10 Minutes invading", "", 30, 70, 20) }
-                                    promises.add(Schedulers.async().runLater({
-                                        damager.getArmy().members.mapNotNull { it.getPlayer() }.forEach { it.sendTitle("5 Minutes invading", "", 30, 70, 20) }
-                                        damager.getArmy().prisoners.mapNotNull { it.getPlayer() }.forEach { it.sendTitle("5 Minutes invading", "", 30, 70, 20) }
-                                        promises.add(
-                                                Schedulers.async().runLater({
-                                                    var x = 5
-                                                    Schedulers.async().runRepeating({ task ->
-                                                        run {
-                                                            damager.getArmy().members.mapNotNull { it.getPlayer() }
-                                                                    .forEach {
-                                                                        it.sendTitle(
-                                                                                "$x seconds invading",
-                                                                                "",
-                                                                                30,
-                                                                                70,
-                                                                                20
-                                                                        )
-                                                                    }
-                                                            damager.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                                                    .forEach {
-                                                                        it.sendTitle(
-                                                                                "$x seconds invading",
-                                                                                "",
-                                                                                30,
-                                                                                70,
-                                                                                20
-                                                                        )
-                                                                    }
-                                                            x--
-                                                            if (x == 0) {
-                                                                this.kill(damager.getArmy())
-                                                                task.close()
-                                                            }
-                                                        }
-                                                    }, 0L, TimeUnit.SECONDS, 1L, TimeUnit.SECONDS)
-                                                    // need change
-                                                }, (TimeUnit.SECONDS.toMillis(3) + TimeUnit.SECONDS.toMillis(45)))
-                                        )
-                                    }, 5L, TimeUnit.SECONDS))
-                                    task.stop()
-                                }else {
-                                    damager.getArmy().members.mapNotNull { it.getPlayer() }
-                                            .forEach { it.sendTitle("${40 - i * 10} Minutes invading", "", 30, 70, 20) }
-                                    damager.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                            .forEach { it.sendTitle("${40 - i * 10} Minutes invading", "", 30, 70, 20) }
-                                }
-                                i++
-                            }, 0L, TimeUnit.SECONDS, 10L, TimeUnit.SECONDS)
-                    )
-                    invade.tasks.addAll(tasks)
-                    invade.promises.addAll(promises)
                     damager.getArmy().invades.add(invade)
                     val msg =
                             Services.load(Configuration::class.java).config.getNode("invading-broadcast").getString("")
@@ -276,16 +247,18 @@ class Army(
         this.hp -= 5
         val progress = ((this.hp * 100).toDouble() / 250) / 100
         this.attackersBB.progress(progress)
+        this.defendersBB.progress(progress)
         if (this.hp <= 0) {
             if (damager != null) damager.getPlayer()!!.server.broadcastMessage("&aThe army &c${damager.getArmy().name} &awon the war against &c${this.name}".colorize())
         } else return
         val invade = invades.first { (it.attacker == this.uuid && it.defender == lastDamager.uuid) || (it.defender == this.uuid && it.attacker == lastDamager.uuid) }
-        invade.promises.forEach { it.cancel() }
-        invade.tasks.forEach { it.close() }
         damager?.getArmy()?.kill(this) ?: lastDamager.kill(this)
+        this@Army.defendersBB.visible(false)
+        this@Army.attackersBB.visible(false)
     }
 
     fun disband() {
+        this.isDisbanded = true
         this.core.type = Material.AIR
         this.core.state.update()
         armies.stream().forEach { it1 ->
@@ -298,6 +271,10 @@ class Army(
         val user = User.getByUUID(this.owner)
         user.getPlayer()?.inventory?.remove(getCoreItem(this))
         Turrets.allTurrets.filter { it.army == this }.forEach { it.despawn() }
+        this.promises.forEach {
+            it.cancel()
+            it.close()
+        }
         armies.remove(this)
         this.enemies.clear()
         this.invades.clear()
@@ -376,7 +353,7 @@ class Army(
         val strs = StringUtils.split(path, " ")
         var node = User.language!!
         for (str in strs) node = node.getNode(str)
-        val msg = node.getString("nullM")
+        val msg = node.string ?: return
         for (player in this.members.mapNotNull { it.getPlayer() }) {
             player.sendMessage(msg.colorize())
         }
@@ -409,6 +386,10 @@ class Army(
         for (player in this.members.mapNotNull { it.getPlayer() }) {
             player.sendMessage(msg.colorize())
         }
+    }
+
+    fun addPromise(promise: Promise<Void>) {
+        this.promises.add(promise)
     }
 
 
@@ -466,7 +447,6 @@ class Army(
                             cardCount = cardCount,
                             dateOfCreation = LocalDate.parse(creationDate)
                     )
-            println("treasury: $treasury")
             army.deposit(treasury)
             army.enemUUID = enemies
             army.alliesUUID = allies
@@ -485,4 +465,5 @@ class Army(
 
 
 }
+
 

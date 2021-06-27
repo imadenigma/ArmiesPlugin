@@ -170,7 +170,6 @@ class ManualFireTurret(
             .filter { Metadata.provideForEntity(it.damager).has(MetadataKeys.MANUAL_TURRET) }
             .filter { it.entity is Player }
             .handler {
-                println("damage bb $damage!")
                 it.damage = 4.0
                 (it.entity as Player).damage(this.damage)
             }

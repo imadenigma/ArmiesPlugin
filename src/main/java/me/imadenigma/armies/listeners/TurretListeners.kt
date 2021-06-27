@@ -12,6 +12,7 @@ import me.imadenigma.armies.weapons.impl.Sentry
 import me.lucko.helper.Helper
 import me.lucko.helper.metadata.Metadata
 import me.mattstudios.mfgui.gui.components.ItemNBT
+import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -83,6 +84,7 @@ class TurretListeners : Listener {
 
     @EventHandler
     fun onBuilding(e: BlockPlaceEvent) {
+        if (e.block.type == Material.BEACON) return
         val army = Army.getByLocation(e.player.location.x, e.player.location.z) ?: kotlin.run {
             e.isCancelled = false
             return

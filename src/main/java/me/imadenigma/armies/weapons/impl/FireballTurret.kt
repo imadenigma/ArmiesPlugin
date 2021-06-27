@@ -187,9 +187,8 @@ class FireballTurret(
             .filter { Metadata.provideForEntity(it.damager).has(MetadataKeys.GUN) }
             .filter { it.entity is Player }
             .handler {
-                println("damage bb $damage!")
-                it.damage = 0.0
-                (it.entity as Player).damage(this.damage)
+                it.damage = this.damage
+
             }
     }
 }

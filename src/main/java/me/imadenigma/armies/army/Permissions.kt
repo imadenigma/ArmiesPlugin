@@ -7,7 +7,6 @@ enum class Permissions {
     BREAK,
     INVADE,
     ClAIM,
-    BEACON_ACCESS,
     PROMOTE,
     DISBAND,
     SURRENDER,

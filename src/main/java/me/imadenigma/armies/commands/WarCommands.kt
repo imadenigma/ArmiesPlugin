@@ -2,17 +2,19 @@ package me.imadenigma.armies.commands
 
 import co.aikar.commands.BaseCommand
 import co.aikar.commands.annotation.*
-import me.imadenigma.armies.army.*
+import me.imadenigma.armies.army.Army
+import me.imadenigma.armies.army.ArmyManager
+import me.imadenigma.armies.army.Invade
+import me.imadenigma.armies.army.Permissions
 import me.imadenigma.armies.user.User
-import me.imadenigma.armies.weapons.Turrets
 import me.lucko.helper.Schedulers
 import me.lucko.helper.promise.Promise
-import me.lucko.helper.scheduler.Task
 import me.lucko.helper.utils.Players
 import net.md_5.bungee.api.ChatColor
+import net.md_5.bungee.api.ChatMessageType
 import net.md_5.bungee.api.chat.ClickEvent
 import net.md_5.bungee.api.chat.TextComponent
-import org.bukkit.Material
+import org.bukkit.entity.Player
 import java.util.concurrent.TimeUnit
 
 @CommandAlias("a|army")
@@ -84,66 +86,41 @@ class WarCommands : BaseCommand() {
         army.invades.add(invade)
         army.msgCR("army-msgs invade receiver", user.getArmy().name)
         user.getArmy().msgCR("army-msgs invade sender", army.name)
-        val tasks = mutableSetOf<Task>()
-        val promises = mutableSetOf<Promise<Void>>()
-        var i = 1
-        tasks.add(Schedulers.sync()
-                .runRepeating({ _ ->
-                    if (i == 3) {
-                        user.getArmy().members.mapNotNull { it.getPlayer() }
-                                .forEach { it.sendTitle("10 Minutes for invading", "", 30, 70, 20) }
-                        user.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                .forEach { it.sendTitle("10 Minutes for invading", "", 30, 70, 20) }
-                        promises.add(Schedulers.async().runLater({
-                            user.getArmy().members.mapNotNull { it.getPlayer() }.forEach { it.sendTitle("5 Minutes left for invading", "", 30, 70, 20) }
-                            user.getArmy().prisoners.mapNotNull { it.getPlayer() }.forEach { it.sendTitle("5 Minutes left for invading", "", 30, 70, 20) }
-                            promises.add(
-                                    Schedulers.async().runLater({
-                                        var x = 5
-                                        Schedulers.async().runRepeating({ task ->
-                                            run {
-                                                user.getArmy().members.mapNotNull { it.getPlayer() }
-                                                        .forEach {
-                                                            it.sendTitle(
-                                                                    "$x seconds left for invading",
-                                                                    "",
-                                                                    30,
-                                                                    70,
-                                                                    20
-                                                            )
-                                                        }
-                                                user.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                                        .forEach {
-                                                            it.sendTitle(
-                                                                    "$x seconds left for invading",
-                                                                    "",
-                                                                    30,
-                                                                    70,
-                                                                    20
-                                                            )
-                                                        }
-                                                x--
-                                                if (x == 0) {
-                                                    army.kill(user.getArmy())
-                                                    task.close()
-                                                }
-                                            }
-                                        }, 0L, TimeUnit.SECONDS, 1L, TimeUnit.SECONDS)
-                                        // need change
-                                    }, (TimeUnit.SECONDS.toMillis(4) + TimeUnit.SECONDS.toMillis(45)))
-                            )
-                        }, 5L, TimeUnit.SECONDS))
-                    }else {
-                        user.getArmy().members.mapNotNull { it.getPlayer() }
-                                .forEach { it.sendTitle("${30 - i * 10} Minutes left for invading", "", 30, 70, 20) }
-                        user.getArmy().prisoners.mapNotNull { it.getPlayer() }
-                                .forEach { it.sendTitle("${30 - i * 10} Minutes left for invading", "", 30, 70, 20) }
-                    }
-                    i++
-                }, 0L, TimeUnit.SECONDS, 10L, TimeUnit.SECONDS)
-        )
-        invade.tasks.addAll(tasks)
-        invade.promises.addAll(promises)
+        val damagerMembers = mutableSetOf<Player>()
+        damagerMembers.addAll(user.getArmy().members.mapNotNull { it.getPlayer() })
+        damagerMembers.addAll(user.getArmy().prisoners.mapNotNull { it.getPlayer() })
+        damagerMembers.addAll(army.members.mapNotNull { it.getPlayer() })
+        damagerMembers.addAll(army.prisoners.mapNotNull { it.getPlayer() })
+        damagerMembers.forEach { if (!army.isDisbanded) it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("30 minutes left")) }
+        with(Promise.start()) {
+            army.addPromise(this)
+            this.thenRunDelayedSync({ if (!army.isDisbanded) damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("20 minutes left")) } }, 10L, TimeUnit.SECONDS)
+                .thenRunDelayedSync({ if (!army.isDisbanded) damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("10 minutes left")) } }, 10L, TimeUnit.SECONDS)
+                .thenRunDelayedSync({ if (!army.isDisbanded) damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("5 minutes left")) } }, 5L, TimeUnit.SECONDS)
+                .thenRunDelayedSync({
+                    var i = 11
+
+                    Schedulers.sync().runRepeating({ task ->
+                        i--
+                        damagerMembers.forEach { it.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent("$i seconds left")) }
+                        if (i <= 0) {
+                            if (!army.isDisbanded) {
+                                army.kill(user.getArmy())
+                            }
+                            this.cancel()
+                            this.close()
+                        }
+                    }, 0L, TimeUnit.SECONDS, 1L, TimeUnit.SECONDS)
+
+                }, TimeUnit.SECONDS.toMillis(5) - TimeUnit.SECONDS.toMillis(5), TimeUnit.MILLISECONDS)
+
+        }
+        with(army) {
+            this.attackersBB.addPlayers(user.getArmy().members.mapNotNull { it.getPlayer() })
+            this.defendersBB.addPlayers(this.members.mapNotNull { it.getPlayer() })
+            user.getArmy().invades.add(invade)
+            this.invades.add(invade)
+        }
     }
 
     @Subcommand("coalition")

@@ -55,6 +55,16 @@ class ArmyManager {
                         chatType = 'a',
                         home = config.getNode("us", "core").getString("").asLocation(),
                 )
+                // TODO complete this !
+//                val warZone = Army(
+//                        UUID.randomUUID(),
+//                        "War Zone",
+//                        UUID.randomUUID(),
+//                        core = config.getNode("warzone", "core").getString("").asLocation().block,
+//                        isOpened = true,
+//                        description = config.getNode("warzone", "description").getString("")
+//
+//                )
                 consoleArmies = setOf(
                         us,
                         safeZone

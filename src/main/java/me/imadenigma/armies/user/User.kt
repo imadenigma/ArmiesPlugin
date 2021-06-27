@@ -26,8 +26,8 @@ class User(
     val deletedPerms: MutableSet<Permissions> = mutableSetOf(),
     var armyChat: Boolean = false
 ) : GsonSerializable, Sender, ArmyEconomy {
+    var isPvp: Boolean = false
     var lastAgg = 0L
-    var lastCoreAttack = 0L
     var isOutsideArea = false
     init {
         users.add(this)

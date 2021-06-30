@@ -1,0 +1,16 @@
+[
+  {
+    "uuid": "b0e2a330-289d-47f0-ad67-af4d06abe9ea",
+    "rank": "NOTHING",
+    "additionalPerms": [],
+    "deletedPerms": [],
+    "chat": false
+  },
+  {
+    "uuid": "c8b9e280-63f5-46d3-9685-48533f2035da",
+    "rank": "EMPEROR",
+    "additionalPerms": [],
+    "deletedPerms": [],
+    "chat": false
+  }
+]
